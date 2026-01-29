@@ -56,3 +56,7 @@ _backups/
 *.bak
 *.bak_*
 
+
+# build artifacts
+companion-sorare-app.bundle
+
