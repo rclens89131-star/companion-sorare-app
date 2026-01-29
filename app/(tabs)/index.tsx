@@ -70,6 +70,62 @@ export default function HomeScreen() {
             Placeholder V1. V2: scores, rewards, ranking, résumé perf, alertes et priorités.
           </Text>
         </View>
+        <View style={{ backgroundColor: theme.panel, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.stroke }}>
+          <Text style={{ color: theme.text, fontSize: 14, fontWeight: "800" }}>Accès rapides</Text>
+
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+            <Pressable
+              onPress={() => router.push("/(tabs)/cards")}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: theme.panel2,
+                borderWidth: 1,
+                borderColor: theme.stroke,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: theme.text, fontWeight: "900" }}>Mes cartes</Text>
+              <Text style={{ color: theme.muted, marginTop: 4, fontSize: 12 }}>Charger & sélectionner</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push("/(tabs)/play")}
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: "rgba(59,130,246,0.18)",
+                borderWidth: 1,
+                borderColor: "rgba(59,130,246,0.35)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: theme.text, fontWeight: "900" }}>Jouer</Text>
+              <Text style={{ color: theme.muted, marginTop: 4, fontSize: 12 }}>Créer une lineup</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            onPress={() => router.push("/(tabs)/market")}
+            style={{
+              marginTop: 10,
+              paddingVertical: 12,
+              borderRadius: 14,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              borderWidth: 1,
+              borderColor: theme.stroke,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: theme.text, fontWeight: "900" }}>Scout / Marché</Text>
+          </Pressable>
+        </View>
+
 
         <View style={{ backgroundColor: theme.panel, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.stroke }}>
           <Text style={{ color: theme.text, fontSize: 14, fontWeight: "800" }}>Prochaines priorités</Text>
@@ -84,3 +140,4 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
