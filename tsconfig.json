@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
@@ -12,4 +12,6 @@
     "**/*.ts",
     "**/*.tsx"
   ]
+  ,
+  "exclude": ["_backups", "**/_backups/**"]
 }

@@ -49,3 +49,10 @@ app-example
 oauth_tokens.json
 *.pem
 *.key
+
+# local backups
+_backups/
+**/_backups/**
+*.bak
+*.bak_*
+

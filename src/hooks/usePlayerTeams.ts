@@ -22,8 +22,8 @@ export function usePlayerTeams() {
       try {
         const data = await apiFetch(`/public-player?slug=${encodeURIComponent(playerSlug)}`);
         const info: TeamInfo = {
-          teamName: data?.teamName ?? null,
-          teamSlug: data?.teamSlug ?? null,
+          teamName: (data as any)?.teamName ?? null,
+          teamSlug: (data as any)?.teamSlug ?? null,
         };
         cacheRef.current[playerSlug] = info;
         return info;
@@ -47,3 +47,4 @@ export function usePlayerTeams() {
 
   return { getTeam, peek };
 }
+
