@@ -1,842 +1,534 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
+﻿import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator,
   FlatList,
-  Image,
-  Modal,
-  Pressable,
   SafeAreaView,
   Text,
-  TextInput,
-  View,
-} from "react-native";
-import { theme } from "../../src/theme";
-import { apiFetch } from "../../src/api";
+  TouchableOpacity,
+  View, Image, Modal, Pressable } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-type ScoutOffer = {
-  offerId: string;
-  slug: string;
-  rarity?: string | null;
-  seasonYear?: number | null;
-  pictureUrl?: string | null;
+type MarketOffer = {
+  id: string;
+  status?: string;
+  cardSlug?: string;
+  cardName?: string;
+  pictureUrl?: string;  // XS_MARKET_APP_IMG_V1
+  rarity?: string;
+  collection?: string;
   eur?: number | null;
+  wei?: string | null;
+  eth?: string | null;
+  price?: { currency: "EUR" | "WEI" | string; amount: any } | null;
+  priceText?: string;
 };
 
-type WatchItem = { slug: string; addedAt?: string };
-type AlertItem = { id: string; slug: string; maxEur: number; createdAt?: string; isEnabled?: boolean };
+type MarketOffersResponse = {
+  ok: boolean;
+  fromCache?: boolean;
+  count?: number;   // total renvoyé par backend (après ses filtres)
+  items: MarketOffer[];
+  error?: string;
+};
 
-type TabKey = "market" | "watchlist" | "alerts";
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "market", label: "Marché" },
-  { key: "watchlist", label: "Watchlist" },
-  { key: "alerts", label: "Alertes" },
-];
-
-const RARITIES = ["limited", "rare", "super_rare", "unique"] as const;
-
-
-function slugify(input: string) {
-  return String(input || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")   // enlève accents
-    .toLowerCase()
-    .trim()
-    .replace(/['’]/g, "")             // apostrophes
-    .replace(/[^a-z0-9]+/g, "-")      // espaces/punct -> -
-    .replace(/^-+|-+$/g, "");
-}
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        paddingHorizontal: 10,
-        paddingVertical: 7,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? theme.accent : theme.stroke,
-        backgroundColor: active ? "rgba(120,160,255,0.18)" : "transparent",
-      }}
-    >
-      <Text style={{ color: active ? theme.text : theme.muted, fontWeight: "800", fontSize: 12 }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
+async function getStoredDeviceId(): Promise<string | null> {
+  const v = await AsyncStorage.getItem("deviceId");
+  return (v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
 }
 
-function Segmented({ value, onChange }: { value: TabKey; onChange: (k: TabKey) => void }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        backgroundColor: theme.panel,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: theme.stroke,
-        overflow: "hidden",
-      }}
-    >
-      {TABS.map((t) => {
-        const active = t.key === value;
-        return (
-          <Pressable
-            key={t.key}
-            onPress={() => onChange(t.key)}
-            style={{
-              flex: 1,
-              paddingVertical: 10,
-              alignItems: "center",
-              backgroundColor: active ? "rgba(120,160,255,0.18)" : "transparent",
-              borderRightWidth: t.key !== "alerts" ? 1 : 0,
-              borderRightColor: theme.stroke,
-            }}
-          >
-            <Text style={{ color: active ? theme.text : theme.muted, fontWeight: "900" }}>{t.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+async function fetchMarketOffers(
+  baseUrl: string,
+  deviceId: string,
+  first = 50,
+  eurOnly = false
+) {
+  const qs = new URLSearchParams();
+  qs.set("deviceId", deviceId);
+  qs.set("first", String(first));
+  if (eurOnly) qs.set("eurOnly", "1");
+
+  const url = `${baseUrl}/scout/cards?${qs.toString()}`;
+  const res = await fetch(url);
+  const text = await res.text();
+
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Réponse non-JSON: ${text.slice(0, 160)}`);
+  }
+
+  if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+  return { url, data: json as MarketOffersResponse };
 }
 
-function TileButton({
-  title,
-  subtitle,
-  rightText,
-  onPress,
-}: {
-  title: string;
-  subtitle: string;
-  rightText?: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        backgroundColor: theme.panel,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: theme.stroke,
-        padding: 14,
-        gap: 6,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: theme.text, fontWeight: "900", fontSize: 16, flex: 1 }}>{title}</Text>
-        {!!rightText && (
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: theme.stroke,
-              backgroundColor: theme.panel2,
-            }}
-          >
-            <Text style={{ color: theme.text, fontWeight: "900", fontSize: 12 }}>{rightText}</Text>
-          </View>
-        )}
-      </View>
-
-      <Text style={{ color: theme.muted, fontWeight: "800" }}>{subtitle}</Text>
-    </Pressable>
-  );
+function formatPrice(o: MarketOffer) {
+  if (o?.priceText && o.priceText.trim()) return o.priceText;
+  if (typeof o?.eur === "number") return `€${o.eur.toFixed(2)}`;
+  if (o?.wei) return `WEI ${o.wei}`;
+  if (o?.price?.currency === "WEI" && o?.price?.amount) return `WEI ${String(o.price.amount)}`;
+  return "—";
 }
 
-function MiniCard({
-  item,
-  onPress,
-}: {
-  item: ScoutOffer;
-  onPress: () => void;
-}) {
-  const eurTxt = item.eur == null ? "—" : `${item.eur}€`;
-  const rar = String(item.rarity || "").toUpperCase();
-  const season = item.seasonYear ? String(item.seasonYear) : "";
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        width: 150,
-        backgroundColor: theme.panel,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: theme.stroke,
-        overflow: "hidden",
-      }}
-    >
-      <View style={{ padding: 10, gap: 8 }}>
-        <View
-          style={{
-            backgroundColor: theme.panel2,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: theme.stroke,
-            overflow: "hidden",
-          }}
-        >
-          {item.pictureUrl ? (
-            <Image source={{ uri: item.pictureUrl }} style={{ width: "100%", height: 110 }} resizeMode="contain" />
-          ) : (
-            <View style={{ height: 110, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: theme.muted, fontWeight: "900" }}>No image</Text>
-            </View>
-          )}
-        </View>
-
-        <Text numberOfLines={1} style={{ color: theme.text, fontWeight: "900" }}>
-          {item.slug}
-        </Text>
-
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ color: theme.muted, fontWeight: "800", fontSize: 11 }}>
-            {rar} {season}
-          </Text>
-          <Text style={{ color: theme.text, fontWeight: "900", fontSize: 12 }}>{eurTxt}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
+function norm(s?: string) {
+  return String(s || "").trim().toLowerCase();
 }
 
 export default function MarketScreen() {
-  // Dashboard -> ouvre un modal (overlay style Sorare)
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<TabKey>("watchlist");
+  
+  
+  // XS_DEVICEID_STATE_V3_BEGIN
+  const [deviceId, setDeviceId] = useState<string>("");
 
-  // Search focus modal
-  const searchRef = useRef<TextInput | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const v = await getStoredDeviceId(); if (alive && v) setDeviceId(String(v));
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
+  // XS_DEVICEID_STATE_V3_END
+// XS_MARKET_V3_STATE_V1_BEGIN
+  const [selected, setSelected] = useState<MarketOffer | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Dashboard preview
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewItems, setPreviewItems] = useState<ScoutOffer[]>([]);
-  const [watchCount, setWatchCount] = useState<number>(0);
-  const [alertCount, setAlertCount] = useState<number>(0);
-
-  // UI filtres (dans le modal)
-  const [search, setSearch] = useState("");
-  const [eurOnly, setEurOnly] = useState(true);
-  const [maxEur, setMaxEur] = useState<string>("20");
-  const [rarity, setRarity] = useState<Set<string>>(new Set());
-
-  // Market data (modal)
-  const [items, setItems] = useState<ScoutOffer[]>([]);
+  const xsOpenOffer = (it: MarketOffer) => {
+    setSelected(it);
+    setModalOpen(true);
+  };
+  const xsCloseOffer = () => setModalOpen(false);
+  // XS_MARKET_V3_STATE_V1_END
+const [offers, setOffers] = useState<MarketOffer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasNext, setHasNext] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Watchlist / alerts (modal)
-  const [watch, setWatch] = useState<WatchItem[]>([]);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [loadingSide, setLoadingSide] = useState(false);
+  const [meta, setMeta] = useState<{ fromCache?: boolean; count?: number } | null>(null);
 
-  // Toast
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<any>(null);
-  function showToast(msg: string) {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 1800);
-  }
+  // UI settings
+  const [first, setFirst] = useState(50);
+  const [eurOnly, setEurOnly] = useState(false);
+  const [footballOnly, setFootballOnly] = useState(true);
+  const [rarity, setRarity] = useState<"all" | "limited" | "rare" | "super_rare" | "unique">("all");
+  const [sortAsc, setSortAsc] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
 
-  const maxEurNum = useMemo(() => {
-    const n = Number(String(maxEur || "").replace(",", "."));
-    return Number.isFinite(n) ? n : null;
-  }, [maxEur]);
+  // debug
+  const [lastUrl, setLastUrl] = useState<string | null>(null);
+  const [lastDeviceId, setLastDeviceId] = useState<string | null>(null);
 
-  const queryBase = useMemo(() => {
-    const qs = new URLSearchParams();
-    qs.set("first", "10");
-    if (eurOnly) qs.set("eurOnly", "1");
-    if (maxEurNum != null) qs.set("maxEur", String(maxEurNum));
-    return qs;
-  }, [eurOnly, maxEurNum]);
-
-    const rarityKey = useMemo(() => Array.from(rarity).sort().join(","), [rarity]);
-
-const filteredItems = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    let out = items;
-
-    if (s) out = out.filter((x) => String(x.slug || "").toLowerCase().includes(s));
-    if (rarity.size) out = out.filter((x) => rarity.has(String(x.rarity || "").toLowerCase()));
-
-    return out;
-  }, [items, search, rarity]);
-
-  async function loadPreview() {
+  const stats = useMemo(() => {
+    const fetched = offers.length;
+    const eurCount = offers.filter(o => typeof o.eur === "number" && o.eur !== null).length;
+    return { fetched, eurCount };
+  }, [offers]);
+  // XS_MARKET_V3_PREFETCH_V1_BEGIN
+  useEffect(() => {
     try {
-      setPreviewLoading(true);
+      const urls = (offers || [])
+        .map((o: any) => o?.pictureUrl)
+        .filter((u: any) => typeof u === "string" && u.startsWith("http"));
+      // évite d'exploser la RAM: on précharge juste les 12 premières
+      urls.slice(0, 12).forEach((u: string) => { Image.prefetch(u); });
+    } catch {}
+  }, [offers]);
+  // XS_MARKET_V3_PREFETCH_V1_END
 
-      // Aperçu léger (moins de requêtes)
-      const qs = new URLSearchParams();
-      qs.set("first", "10");
-      qs.set("eurOnly", "1");
-      qs.set("maxEur", "20");
 
-      const r = await apiFetch<any>(`/scout/cards?${qs.toString()}&eurOnly=1`);
-      setPreviewItems(Array.isArray(r?.items) ? r.items.slice(0, 6) : []);
-
-      // Compteurs watchlist/alertes
-      const w = await apiFetch<any>(`/scout/watchlist`);
-      const a = await apiFetch<any>(`/scout/alerts`);
-      setWatchCount(Array.isArray(w?.items) ? w.items.length : 0);
-      setAlertCount(Array.isArray(a?.items) ? a.items.length : 0);
-    } catch (e: any) {
-      // pas bloquant
-    } finally {
-      setPreviewLoading(false);
+  const shown = useMemo(() => {
+    let arr = offers.slice();
+if (footballOnly) {
+      arr = arr.filter(o => !o.collection || norm(o.collection) === "football");
     }
-  }
 
-  async function loadMarket(opts?: { reset?: boolean }) {
-    const reset = !!opts?.reset;
-    if (loading) return;
+    if (eurOnly) {
+      arr = arr.filter(o => (typeof o.eur === "number" && o.eur !== null) || (o.priceText && o.priceText.trim()) || o.eth || o.wei || (o.price?.currency === "WEI" && o.price?.amount));
+    }
 
+    if (rarity !== "all") {
+      arr = arr.filter(o => norm(o.rarity) === rarity);
+    }
+
+    // tri prix EUR (les null vont à la fin si eurOnly=false)
+    arr.sort((a, b) => {
+      const ae = typeof a.eur === "number" ? a.eur : Number.POSITIVE_INFINITY;
+      const be = typeof b.eur === "number" ? b.eur : Number.POSITIVE_INFINITY;
+      return sortAsc ? (ae - be) : (be - ae);
+    });
+
+    return arr;
+  }, [offers, eurOnly, footballOnly, rarity, sortAsc]);
+
+  const loadOffers = async () => {
     try {
       setLoading(true);
-      const qs = new URLSearchParams(queryBase.toString());
-      const q2 = slugify(search);
-      if (q2) qs.set("query", q2);
-      if (rarity.size) qs.set("rarities", Array.from(rarity).join(","));
-      if (!reset && cursor) qs.set("after", cursor);
+      setError(null);
 
-      const r = await apiFetch<any>(`/scout/cards?${qs.toString()}&eurOnly=1`);
-      const newItems: ScoutOffer[] = Array.isArray(r?.items) ? r.items : [];
-      const pi = r?.pageInfo || {};
-      const nextCursor = typeof pi?.endCursor === "string" ? pi.endCursor : null;
-      const nextHas = !!pi?.hasNextPage;
+      const deviceId = await getStoredDeviceId();
+      if (!deviceId) throw new Error("deviceId introuvable. Connecte l'app (device login) puis réessaie.");
 
-      setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
-      setCursor(nextCursor);
-      setHasNext(nextHas);
+      setLastDeviceId(deviceId);
+
+      const { url, data } = await fetchMarketOffers(BASE_URL, deviceId, first, eurOnly);
+      setLastUrl(url);
+
+      {
+        const raw = Array.isArray(data.items) ? data.items : [];
+        const normalized = raw.map((it: any, idx: number) => ({
+          ...it,
+          id: String(it?.offerId || it?.slug || it?.cardSlug || it?.id || ("row-" + idx)),
+        }));
+        setOffers(normalized);
+      }
+setMeta({ fromCache: data.fromCache, count: data.count });
     } catch (e: any) {
-      showToast(`Erreur marché: ${e?.message ?? "fetch KO"}`);
+      setError(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function refreshMarket() {
-    try {
-      setRefreshing(true);
-      setCursor(null);
-      setHasNext(true);
-      await loadMarket({ reset: true });
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  const Chip = ({
+    label,
+    active,
+    onPress,
+  }: {
+    label: string;
+    active: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 999,
+        backgroundColor: active ? "#1f6feb" : "#222",
+        marginRight: 8,
+        marginTop: 8,
+      }}
+    >
+      <Text style={{ color: "white", fontWeight: "700", fontSize: 12 }}>{label}</Text>
+    </TouchableOpacity>
+  );
 
-  async function loadWatchlist() {
-    try {
-      setLoadingSide(true);
-      const r = await apiFetch<any>(`/scout/watchlist`);
-      const arr = Array.isArray(r?.items) ? r.items : [];
-      setWatch(arr);
-      setWatchCount(arr.length);
-    } catch (e: any) {
-      showToast(`Erreur watchlist: ${e?.message ?? "fetch KO"}`);
-    } finally {
-      setLoadingSide(false);
-    }
-  }
+        const renderItem = ({ item }: { item: MarketOffer }) => {
+    const isSkeleton = typeof item?.id === "string" && item.id.startsWith("sk-");
 
-  async function loadAlerts() {
-    try {
-      setLoadingSide(true);
-      const r = await apiFetch<any>(`/scout/alerts`);
-      const arr = Array.isArray(r?.items) ? r.items : [];
-      setAlerts(arr);
-      setAlertCount(arr.length);
-    } catch (e: any) {
-      showToast(`Erreur alertes: ${e?.message ?? "fetch KO"}`);
-    } finally {
-      setLoadingSide(false);
-    }
-  }
+    const rarityKey = String(item?.rarity || "").toLowerCase();
+    const rarityLabel = (rarityKey || "—").replace(/_/g, " ").toUpperCase();
 
-  async function addToWatchlist(slug: string) {
-    try {
-      await apiFetch(`/scout/watchlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
-      });
-      showToast("Ajouté à la watchlist ⭐");
-      await loadWatchlist();
-    } catch (e: any) {
-      showToast(`Watchlist KO: ${e?.message ?? "post KO"}`);
-    }
-  }
+    const rarityStyle = (() => {
+      if (rarityKey === "unique") return { bg: "rgba(255, 215, 0, 0.16)", bd: "rgba(255, 215, 0, 0.35)" };
+      if (rarityKey === "super_rare") return { bg: "rgba(0, 200, 255, 0.14)", bd: "rgba(0, 200, 255, 0.32)" };
+      if (rarityKey === "rare") return { bg: "rgba(255, 80, 180, 0.14)", bd: "rgba(255, 80, 180, 0.30)" };
+      if (rarityKey === "limited") return { bg: "rgba(120, 255, 120, 0.12)", bd: "rgba(120, 255, 120, 0.26)" };
+      return { bg: "rgba(255,255,255,0.10)", bd: "rgba(255,255,255,0.18)" };
+    })();
 
-  async function createAlert(slug: string) {
-    const m = maxEurNum ?? 20;
-    try {
-      await apiFetch(`/scout/alerts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, maxEur: m }),
-      });
-      showToast(`Alerte créée (≤ ${m}€) 🔔`);
-      await loadAlerts();
-    } catch (e: any) {
-      showToast(`Alerte KO: ${e?.message ?? "post KO"}`);
-    }
-  }
-
-  function openModal(k: TabKey, opts?: { focusSearch?: boolean }) {
-    setTab(k);
-    setOpen(true);
-
-    // Sorare-like: ouvrir directement sur la recherche
-    if (k === "market" && opts?.focusSearch) {
-      setTimeout(() => {
-        searchRef.current?.focus?.();
-      }, 250);
-    }
-  }
-
-  // Load dashboard preview on mount
-  useEffect(() => {
-    loadPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Quand on ouvre le modal, charge le bon contenu
-  useEffect(() => {
-    if (!open) return;
-
-    if (tab === "market") {
-      setCursor(null);
-      setHasNext(true);
-      loadMarket({ reset: true });
-      setTimeout(() => searchRef.current?.focus?.(), 250);
-    }
-    if (tab === "watchlist") loadWatchlist();
-    if (tab === "alerts") loadAlerts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab]);
-
-  // Recharger marché quand filtres principaux changent (si modal ouvert + tab marché)
-  useEffect(() => {
-    if (!open) return;
-    if (tab !== "market") return;
-    setCursor(null);
-    setHasNext(true);
-    loadMarket({ reset: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eurOnly, maxEurNum]);
-
-
-  function CardTile({ item }: { item: ScoutOffer }) {
-    const eurTxt = item.eur == null ? "—" : `${item.eur}€`;
-    const rar = String(item.rarity || "").toUpperCase();
-    const season = item.seasonYear ? String(item.seasonYear) : "";
-
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.panel,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: theme.stroke,
-          overflow: "hidden",
-        }}
-      >
-        <View style={{ padding: 10, gap: 8 }}>
+    if (isSkeleton) {
+      return (
+        <View style={{ flex: 1, margin: 6 }}>
           <View
             style={{
-              backgroundColor: theme.panel2,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: theme.stroke,
+              borderRadius: 18,
               overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "#1d1d1f",
+              backgroundColor: "#0b0b10",
             }}
           >
-            {item.pictureUrl ? (
-              <Image source={{ uri: item.pictureUrl }} style={{ width: "100%", height: 160 }} resizeMode="contain" />
-            ) : (
-              <View style={{ height: 160, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ color: theme.muted, fontWeight: "900" }}>No image</Text>
-              </View>
-            )}
-          </View>
-
-          <Text numberOfLines={1} style={{ color: theme.text, fontWeight: "900" }}>
-            {item.slug}
-          </Text>
-
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: theme.muted, fontWeight: "800", fontSize: 12 }}>
-              {rar} {season}
-            </Text>
-            <Text style={{ color: theme.text, fontWeight: "900" }}>{eurTxt}</Text>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Pressable
-              onPress={() => addToWatchlist(item.slug)}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 10,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: theme.stroke,
-              }}
-            >
-              <Text style={{ color: theme.text, fontWeight: "900" }}>⭐</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => createAlert(item.slug)}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 10,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: theme.stroke,
-              }}
-            >
-              <Text style={{ color: theme.text, fontWeight: "900" }}>🔔</Text>
-            </Pressable>
+            <View style={{ width: "100%", aspectRatio: 0.72, backgroundColor: "#14141a" }} />
+            <View style={{ padding: 12 }}>
+              <View style={{ height: 14, borderRadius: 8, backgroundColor: "#1b1b22", width: "88%" }} />
+              <View style={{ height: 12, borderRadius: 8, backgroundColor: "#1b1b22", width: "60%", marginTop: 10 }} />
+              <View style={{ height: 12, borderRadius: 8, backgroundColor: "#1b1b22", width: "40%", marginTop: 8 }} />
+            </View>
           </View>
         </View>
-      </View>
-    );
-  }
+      );
+    }
 
-  // ---------- DASHBOARD (Scout-Marché) ----------
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
-      <View style={{ padding: 16, gap: 12 }}>
-        <Text style={{ color: theme.text, fontSize: 22, fontWeight: "900" }}>Scout-Marché</Text>
-        <Text style={{ color: theme.muted, fontWeight: "800" }}>
-          Dashboard + aperçu. Clique pour ouvrir l’overlay (comme Sorare).
-        </Text>
+    const priceLabel = formatPrice(item);
 
-        <View style={{ gap: 10 }}>
-          <TileButton
-            title="Marché"
-            subtitle="Ouvre l’overlay + recherche"
-            onPress={() => openModal("market", { focusSearch: true })}
-          />
-          <TileButton
-            title="Watchlist"
-            subtitle="Tes cartes suivies"
-            rightText={`${watchCount}`}
-            onPress={() => openModal("watchlist")}
-          />
-          <TileButton
-            title="Alertes"
-            subtitle="Seuils de prix"
-            rightText={`${alertCount}`}
-            onPress={() => openModal("alerts")}
-          />
-        </View>
-
-        {/* Aperçu marché (mini cartes) */}
+    return (
+      <Pressable onPress={() => xsOpenOffer(item)} style={{ flex: 1, margin: 6 }}>
         <View
           style={{
-            marginTop: 6,
-            backgroundColor: theme.panel,
-            borderRadius: 16,
+            borderRadius: 18,
+            overflow: "hidden",
             borderWidth: 1,
-            borderColor: theme.stroke,
-            padding: 12,
-            gap: 10,
+            borderColor: "#1d1d1f",
+            backgroundColor: "#0b0b10",
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ color: theme.text, fontWeight: "900", flex: 1 }}>Aperçu Marché (≤ 20€)</Text>
-            <Pressable
-              onPress={loadPreview}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: theme.stroke,
-                backgroundColor: theme.panel2,
-              }}
-            >
-              <Text style={{ color: theme.text, fontWeight: "900" }}>↻</Text>
-            </Pressable>
-          </View>
-
-          {previewLoading ? (
-            <View style={{ paddingVertical: 12, alignItems: "center" }}>
-              <ActivityIndicator />
-            </View>
+          {item.pictureUrl ? (
+            <Image
+              source={{ uri: item.pictureUrl }}
+              style={{ width: "100%", aspectRatio: 0.72 }}
+              resizeMode="cover"
+            />
           ) : (
-            <FlatList
-              data={previewItems}
-              keyExtractor={(it) => it.offerId || it.slug}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingRight: 10 }}
-              renderItem={({ item }) => (
-                <MiniCard
-                  item={item}
-                  onPress={() => {
-                    // Sorare-like: click une mini carte -> ouvre overlay + recherche pré-remplie
-                    setSearch(item.slug);
-                    openModal("market", { focusSearch: true });
-                  }}
-                />
-              )}
-              ListEmptyComponent={
-                <Text style={{ color: theme.muted, fontWeight: "900" }}>Pas d’aperçu pour le moment.</Text>
-              }
-            />
-          )}
-
-          <Text style={{ color: theme.muted, fontSize: 12 }}>
-            V1: API publique (rate limit). Aperçu volontairement léger.
-          </Text>
-        </View>
-      </View>
-
-      {/* ---------- MODAL (overlay marché/watchlist/alertes) ---------- */}
-      <Modal visible={open} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setOpen(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }}>
-          {/* Top bar Sorare-like */}
-          <View style={{ padding: 16, gap: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Pressable
-                onPress={() => setOpen(false)}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: theme.stroke,
-                  backgroundColor: theme.panel,
-                }}
-              >
-                <Text style={{ color: theme.text, fontWeight: "900" }}>←</Text>
-              </Pressable>
-              <Text style={{ color: theme.text, fontSize: 20, fontWeight: "900" }}>
-                {tab === "market" ? "Marché" : tab === "watchlist" ? "Watchlist" : "Alertes"}
-              </Text>
-              <View style={{ flex: 1 }} />
-            </View>
-
-            <Segmented value={tab} onChange={setTab} />
-
-            {tab === "market" && (
-              <>
-                {/* Search (focus auto) */}
-                <View
-                  style={{
-                    backgroundColor: theme.panel,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: theme.stroke,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Text style={{ color: theme.muted, fontWeight: "800", marginBottom: 6 }}>Recherche</Text>
-                  <TextInput
-                    ref={(r) => (searchRef.current = r)}
-                    value={search}
-                    onChangeText={setSearch}
-                    placeholder="Chercher (slug)…"
-                    placeholderTextColor={theme.muted}
-                    style={{ color: theme.text, fontWeight: "800" }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    onSubmitEditing={refreshMarket}
-                    returnKeyType="search"
-                  />
-                </View>
-
-                {/* Chips */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  <Chip label="Prix en €" active={eurOnly} onPress={() => setEurOnly((v) => !v)} />
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      backgroundColor: theme.panel,
-                      borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: theme.stroke,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      gap: 10,
-                      minWidth: 140,
-                    }}
-                  >
-                    <Text style={{ color: theme.muted, fontWeight: "900" }}>Max €</Text>
-                    <TextInput
-                      value={maxEur}
-                      onChangeText={setMaxEur}
-                      placeholder="20"
-                      placeholderTextColor={theme.muted}
-                      keyboardType="numeric"
-                      style={{ color: theme.text, fontWeight: "900", flex: 1 }}
-                    />
-                  </View>
-
-                  <Pressable onPress={() => setRarity(new Set())} style={{ paddingHorizontal: 10, paddingVertical: 7 }}>
-                    <Text style={{ color: theme.muted, fontWeight: "900" }}>Reset</Text>
-                  </Pressable>
-                </View>
-
-                {/* Raretés */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {RARITIES.map((r) => (
-                    <Chip
-                      key={r}
-                      label={r.replace("_", " ").toUpperCase()}
-                      active={rarity.has(r)}
-                      onPress={() => {
-                        setRarity((prev) => {
-                          const n = new Set(prev);
-                          if (n.has(r)) n.delete(r);
-                          else n.add(r);
-                          return n;
-                        });
-                      }}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-          </View>
-
-          {/* Content */}
-          {tab === "market" && (
-            <FlatList
-              data={filteredItems}
-              style={{ flex: 1 }}
-              keyExtractor={(it) => it.offerId || it.slug}
-              numColumns={2}
-              columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
-              contentContainerStyle={{ paddingBottom: 140, gap: 12 }}
-              renderItem={({ item }) => <CardTile item={item} />}
-              onEndReached={() => {
-                if (hasNext && !loading) loadMarket({ reset: false });
-              }}
-              onEndReachedThreshold={0.6}
-              refreshing={refreshing}
-              onRefresh={refreshMarket}
-              ListFooterComponent={
-                <View style={{ paddingVertical: 20, alignItems: "center" }}>
-                  {loading ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text style={{ color: theme.muted, fontWeight: "800" }}>{hasNext ? "Scroll pour charger…" : "Fin."}</Text>
-                  )}
-                  <Text style={{ color: theme.muted, marginTop: 6, fontSize: 12 }}>
-                    V1: liveSingleSaleOffers (public). Attention rate limit.
-                  </Text>
-                </View>
-              }
-              ListEmptyComponent={
-                <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-                  <Text style={{ color: theme.muted, fontWeight: "900" }}>Aucune carte trouvée.</Text>
-                </View>
-              }
-            />
-          )}
-
-          {tab === "watchlist" && (
-            <FlatList
-              data={watch}
-              style={{ flex: 1 }}
-              keyExtractor={(it) => it.slug}
-              contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 140 }}
-              refreshing={loadingSide}
-              onRefresh={loadWatchlist}
-              renderItem={({ item }) => (
-                <View
-                  style={{
-                    backgroundColor: theme.panel,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: theme.stroke,
-                    padding: 12,
-                  }}
-                >
-                  <Text style={{ color: theme.text, fontWeight: "900" }}>{item.slug}</Text>
-                  {!!item.addedAt && <Text style={{ color: theme.muted, marginTop: 6 }}>{item.addedAt}</Text>}
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={{ padding: 16 }}>
-                  <Text style={{ color: theme.muted, fontWeight: "900" }}>Watchlist vide.</Text>
-                </View>
-              }
-            />
-          )}
-
-          {tab === "alerts" && (
-            <FlatList
-              data={alerts}
-              style={{ flex: 1 }}
-              keyExtractor={(it) => it.id}
-              contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 140 }}
-              refreshing={loadingSide}
-              onRefresh={loadAlerts}
-              renderItem={({ item }) => (
-                <View
-                  style={{
-                    backgroundColor: theme.panel,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: theme.stroke,
-                    padding: 12,
-                  }}
-                >
-                  <Text style={{ color: theme.text, fontWeight: "900" }}>{item.slug}</Text>
-                  <Text style={{ color: theme.muted, marginTop: 6, fontWeight: "800" }}>Max: {item.maxEur}€</Text>
-                  {!!item.createdAt && <Text style={{ color: theme.muted, marginTop: 4 }}>{item.createdAt}</Text>}
-                </View>
-              )}
-              ListEmptyComponent={
-                <View style={{ padding: 16 }}>
-                  <Text style={{ color: theme.muted, fontWeight: "900" }}>Aucune alerte.</Text>
-                </View>
-              }
-            />
-          )}
-
-          {!!toast && (
             <View
               style={{
-                position: "absolute",
-                left: 16,
-                right: 16,
-                bottom: 24,
-                backgroundColor: theme.panel,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: theme.stroke,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
+                width: "100%",
+                aspectRatio: 0.72,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#111",
               }}
             >
-              <Text style={{ color: theme.text, fontWeight: "900", textAlign: "center" }}>{toast}</Text>
+              <Text style={{ color: "#666", fontWeight: "800" }}>Image indisponible</Text>
             </View>
           )}
-        </SafeAreaView>
+
+          {/* Gloss */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: -50,
+              left: -70,
+              width: 190,
+              height: 140,
+              backgroundColor: "rgba(255,255,255,0.10)",
+              borderRadius: 40,
+              transform: [{ rotate: "-22deg" }],
+            }}
+          />
+
+          {/* Bottom overlay */}
+          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+            <View style={{ padding: 12 }}>
+              <View
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  top: 0,
+                  backgroundColor: "rgba(0,0,0,0.62)",
+                }}
+              />
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text numberOfLines={2} style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
+                    {item.cardName || item.cardSlug || item.id}
+                  </Text>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 8 }}>
+                    <View
+                      style={{
+                        paddingVertical: 4,
+                        paddingHorizontal: 10,
+                        borderRadius: 999,
+                        backgroundColor: rarityStyle.bg,
+                        borderWidth: 1,
+                        borderColor: rarityStyle.bd,
+                      }}
+                    >
+                      <Text style={{ color: "white", fontSize: 11, fontWeight: "900" }}>{rarityLabel}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ alignItems: "flex-end" }}>
+                  <View
+                    style={{
+                      paddingVertical: 7,
+                      paddingHorizontal: 12,
+                      borderRadius: 999,
+                      backgroundColor: "rgba(255,255,255,0.14)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.20)",
+                    }}
+                  >
+                    <Text style={{ color: "white", fontWeight: "900", fontSize: 13 }}>{priceLabel}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {showDebug && item.cardSlug ? (
+              <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
+                <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 11 }}>{item.cardSlug}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Pressable>
+    );
+  };
+  // XS_MARKET_GRID_V2
+  // XS_MARKET_V3_V1
+  // XS_MARKET_CARD_UI_V1
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
+      <View style={{ padding: 12 }}>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>Marché</Text>
+
+        {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}
+        {(!deviceId || !String(deviceId).trim()) ? (
+          <View style={{ marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: "#111", borderWidth: 1, borderColor: "#222" }}>
+            <Text style={{ color: "white", fontWeight: "900" }}>Compte non lié</Text>
+            <Text style={{ marginTop: 6, color: "#bbb" }}>
+              Connecte ton compte Sorare (deviceId) puis reviens ici.
+            </Text>
+          </View>
+        ) : null}
+        {/* XS_FIX_HOOKS_GATING_UI_V1_END */}
+
+        <TouchableOpacity
+          onPress={loadOffers}
+          disabled={loading}
+          style={{
+            marginTop: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: 10,
+            backgroundColor: loading ? "#333" : "#1f6feb",
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "800" }}>
+            {loading ? "Chargement..." : "Charger les offres"}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={{ marginTop: 10, color: "#bbb" }}>
+          affichées: {shown.length} • EUR: {stats.eurCount}/{stats.fetched} • count={meta?.count ?? "?"} • cache={meta?.fromCache ? "oui" : "non"}
+        </Text>
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 6 }}>
+          <Chip label={sortAsc ? "Tri: prix ↑" : "Tri: prix ↓"} active={true} onPress={() => setSortAsc(v => !v)} />
+          <Chip label={footballOnly ? "FOOTBALL: ON" : "FOOTBALL: OFF"} active={footballOnly} onPress={() => setFootballOnly(v => !v)} />
+          <Chip label={eurOnly ? "EUR: ON" : "EUR: OFF"} active={eurOnly} onPress={() => setEurOnly(v => !v)} />
+          <Chip label={showDebug ? "Debug: ON" : "Debug: OFF"} active={showDebug} onPress={() => setShowDebug(v => !v)} />
+        </View>
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2 }}>
+          <Chip label="Rareté: ALL" active={rarity === "all"} onPress={() => setRarity("all")} />
+          <Chip label="LIMITED" active={rarity === "limited"} onPress={() => setRarity("limited")} />
+          <Chip label="RARE" active={rarity === "rare"} onPress={() => setRarity("rare")} />
+          <Chip label="SUPER RARE" active={rarity === "super_rare"} onPress={() => setRarity("super_rare")} />
+          <Chip label="UNIQUE" active={rarity === "unique"} onPress={() => setRarity("unique")} />
+        </View>
+
+        {showDebug ? (
+          <>
+            {lastDeviceId ? <Text style={{ marginTop: 6, color: "#777" }}>deviceId: {lastDeviceId}</Text> : null}
+            {lastUrl ? <Text style={{ marginTop: 6, color: "#777" }}>url: {lastUrl}</Text> : null}
+          </>
+        ) : null}
+
+        {error ? (
+          <Text style={{ marginTop: 10, color: "#ff6b6b" }}>Erreur: {error}</Text>
+        ) : null}
+      </View>
+
+      {loading ? (
+        <View style={{ paddingTop: 20 }}>
+          <ActivityIndicator />
+        </View>
+      ) : null}
+
+      <FlatList
+        numColumns={2}
+        columnWrapperStyle={{ gap: 0 }}
+        data={(loading && shown.length === 0) ? Array.from({ length: 6 }, (_, i) => ({ id: "sk-" + i } as any)) : shown}
+        keyExtractor={(it, idx) => String((it as any)?.offerId || (it as any)?.slug || (it as any)?.id || idx)}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 30 }}
+        refreshing={loading}
+        onRefresh={loadOffers}
+      />
+          {/* XS_MARKET_V3_MODAL_V1_BEGIN */}
+      <Modal visible={modalOpen} animationType="slide" transparent={true} onRequestClose={xsCloseOffer}>
+        <Pressable
+          onPress={xsCloseOffer}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.72)",
+            padding: 14,
+            justifyContent: "flex-end",
+          }}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={{
+              borderRadius: 22,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "#1d1d1f",
+              backgroundColor: "#0b0b10",
+            }}
+          >
+            {selected?.pictureUrl ? (
+              <Image
+                source={{ uri: selected.pictureUrl }}
+                style={{ width: "100%", aspectRatio: 0.72 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{ width: "100%", aspectRatio: 0.72, alignItems: "center", justifyContent: "center", backgroundColor: "#111" }}>
+                <Text style={{ color: "#666", fontWeight: "900" }}>Image indisponible</Text>
+              </View>
+            )}
+
+            <View style={{ padding: 14 }}>
+              <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
+                {selected?.cardName || selected?.cardSlug || selected?.id || "—"}
+              </Text>
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                <Text style={{ color: "rgba(255,255,255,0.70)", fontWeight: "800" }}>
+                  Rareté: {String(selected?.rarity || "—").replace(/_/g," ").toUpperCase()}
+                </Text>
+
+                <View
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 14,
+                    borderRadius: 999,
+                    backgroundColor: "rgba(255,255,255,0.14)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.20)",
+                  }}
+                >
+                  <Text style={{ color: "white", fontWeight: "900", fontSize: 14 }}>{selected ? formatPrice(selected) : "—"}</Text>
+                </View>
+              </View>
+
+              {selected?.cardSlug ? (
+                <Text style={{ marginTop: 10, color: "rgba(255,255,255,0.50)", fontSize: 12 }}>
+                  {selected.cardSlug}
+                </Text>
+              ) : null}
+
+              <Pressable
+                onPress={xsCloseOffer}
+                style={{
+                  marginTop: 14,
+                  paddingVertical: 12,
+                  borderRadius: 14,
+                  backgroundColor: "#1f6feb",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>Fermer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
-    </SafeAreaView>
+      {/* XS_MARKET_V3_MODAL_V1_END */}
+</SafeAreaView>
   );
 }
+
 
 
 

@@ -54,6 +54,14 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="time" color={color} size={size} />,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Paramètres",
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
+
