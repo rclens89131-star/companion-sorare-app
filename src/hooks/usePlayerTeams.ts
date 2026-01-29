@@ -27,6 +27,7 @@ export function usePlayerTeams() {
       try {
         const data = await apiFetch(`/public-player?slug=${encodeURIComponent(playerSlug)}`);
         const d = data as PlayerTeamData | null | undefined;
+const d = data as PlayerTeamData | null | undefined;
 const info: TeamInfo = {
   teamName: d?.teamName ?? null,
   teamSlug: d?.teamSlug ?? null,
@@ -35,6 +36,7 @@ const info: TeamInfo = {
         return info;
       } catch {
         const d = data as PlayerTeamData | null | undefined;
+const d = data as PlayerTeamData | null | undefined;
 const info: TeamInfo = {
   teamName: d?.teamName ?? null,
   teamSlug: d?.teamSlug ?? null,
@@ -57,6 +59,7 @@ const info: TeamInfo = {
 
   return { getTeam, peek };
 }
+
 
 
 

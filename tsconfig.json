@@ -1,36 +1,5 @@
 ﻿{
   "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ]
-  ,
-  "exclude": ["_backups", "**/_backups/**"]
-    "extends":  "expo/tsconfig.base",
-    "compilerOptions":  {
-                            "strict":  true,
-                            "paths":  {
-                                          "@/*":  [
-                                                      "./*"
-                                                  ]
-                                      }
-                        },
-    "include":  [
-                    "**/*.ts",
-                    "**/*.tsx"
-                ],
-    "exclude":  [
-                    "_backups",
-                    "**/_backups/**"
-                ]
+  "compilerOptions": {},
+  "exclude": ["_backups/**"]
 }
-
-
