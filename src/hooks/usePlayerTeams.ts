@@ -31,6 +31,9 @@ export function usePlayerTeams() {
           teamSlug: (data as any)?.teamSlug ?? null,
           teamName: ((data as PlayerTeamData)?)?.teamName ?? null,
           teamSlug: ((data as PlayerTeamData)?)?.teamSlug ?? null,
+          const d = data as PlayerTeamData | null | undefined;
+          teamName: d?.teamName ?? null,
+          teamSlug: d?.teamSlug ?? null,
         };
         cacheRef.current[playerSlug] = info;
         return info;
@@ -54,4 +57,6 @@ export function usePlayerTeams() {
 
   return { getTeam, peek };
 }
+
+
 
