@@ -88,7 +88,7 @@ export function useGallery({ identifier, first = 25 }: Options) {
         const r = await apiFetch<any>(`/public-user-cards-page?${qs.toString()}`);
 
         const rawCards: Card[] = Array.isArray(r?.cards) ? r.cards : [];
-        const filtered = rawCards.filter((c) => String(c?.rarity || "").toLowerCase() !== "common");
+        const filtered = rawCards.filter((c) => getRarity(c) !== "common");
 
         setCards((prev) => (mode === "reset" ? uniqMerge([], filtered) : uniqMerge(prev, filtered)));
 
