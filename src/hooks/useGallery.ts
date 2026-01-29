@@ -10,22 +10,65 @@ type Options = {
 
 
 
-function getRarity(card: any) {
-  const norm = (v: unknown) => (typeof v === "string" ? v.toLowerCase().trim() : "");
-  const fromTyped = norm(card?.rarityTyped);
+
+
+
+
+
+
+
+
+
+
+function normalizeRarity(v: unknown): string {
+  const s = typeof v === "string" ? v.toLowerCase().trim() : "";
+  return s
+    .replace(/\s+/g, "_")
+    .replace(/-+/g, "_")
+    .replace(/__+/g, "_");
+}
+
+function rarityFromSlug(slug: unknown): string {
+  const s = typeof slug === "string" ? slug.toLowerCase() : "";
+  if (s.includes("-unique-")) return "unique";
+  if (s.includes("-super-rare-") || s.includes("-super_rare-") || s.includes("superrare")) return "super_rare";
+  if (s.includes("-rare-")) return "rare";
+  if (s.includes("-limited-")) return "limited";
+  if (s.includes("-common-")) return "common";
+  return "";
+}
+
+function getRarity(card: any): string {
+  if (!card || typeof card !== "object") return "";
+
+  const fromTyped = normalizeRarity(card?.rarityTyped);
   if (fromTyped) return fromTyped;
 
   const rarity = card?.rarity;
-  if (typeof rarity === "string") return norm(rarity);
+  if (typeof rarity === "string") return normalizeRarity(rarity);
 
-  const fromName = norm(rarity?.name);
+  const fromName = normalizeRarity(rarity?.name);
   if (fromName) return fromName;
 
-  const fromSlug = norm(rarity?.slug);
+  const fromSlug = normalizeRarity(rarity?.slug);
   if (fromSlug) return fromSlug;
 
-  return "";
+  const fromDisplay = normalizeRarity(rarity?.displayName);
+  if (fromDisplay) return fromDisplay;
+
+  return rarityFromSlug(card?.slug);
 }
+
+function isAllowedRarity(card: any): boolean {
+  const r = getRarity(card);
+  if (!r) return false;
+
+  // variantes cheloues
+  if (r === "superrare") return true;
+
+  return r === "limited" || r === "rare" || r === "super_rare" || r === "unique";
+}
+
 function uniqMerge(prev: Card[], next: Card[]) {
   const map = new Map<string, Card>();
 
@@ -88,8 +131,33 @@ export function useGallery({ identifier, first = 25 }: Options) {
         const r = await apiFetch<any>(`/public-user-cards-page?${qs.toString()}`);
 
         const rawCards: Card[] = Array.isArray(r?.cards) ? r.cards : [];
-        const filtered = rawCards.filter((c) => getRarity(c) !== "common");
+        const filtered = rawCards.filter(isAllowedRarity);
+        // Allowlist (Limited/Rare/Super Rare/Unique)
+        // Debug rareté (dans logs Metro)
+        try {
+          const counts = rawCards.reduce((acc: any, c: any) => {
+            const r = getRarity(c) || "unknown";
+            acc[r] = (acc[r] || 0) + 1;
+            return acc;
+          }, {});
+          console.log("[useGallery] rarityCounts:", counts);
+          const s = rawCards[0];
+          console.log("[useGallery] sample.rarity fields:", {
+            rarityTyped: s?.rarityTyped,
+            rarityTier: s?.rarityTier,
+            rarity: s?.rarity,
+            rarityName: s?.rarity?.name,
+            raritySlug: s?.rarity?.slug,
+            rarityDisplayName: s?.rarity?.displayName,
+          });
+        } catch {}
 
+        // Fallback: si allowlist => 0 mais on a des cartes,
+        // alors on cache seulement les commons (sinon écran vide)
+        if (filtered.length === 0 && rawCards.length > 0) {
+          console.warn("[useGallery] allowlist filtered 0 -> fallback to non-common");
+
+        }
         setCards((prev) => (mode === "reset" ? uniqMerge([], filtered) : uniqMerge(prev, filtered)));
 
         const pi = r?.pageInfo || {};
@@ -117,4 +185,12 @@ export function useGallery({ identifier, first = 25 }: Options) {
 
   return { cards, loading, loadingMore, error, reload, loadMore };
 }
+
+
+
+
+
+
+
+
 
