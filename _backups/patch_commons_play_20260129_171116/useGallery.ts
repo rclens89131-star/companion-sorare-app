@@ -8,24 +8,6 @@ type Options = {
   first?: number;
 };
 
-
-
-function getRarity(card: any) {
-  const norm = (v: unknown) => (typeof v === "string" ? v.toLowerCase().trim() : "");
-  const fromTyped = norm(card?.rarityTyped);
-  if (fromTyped) return fromTyped;
-
-  const rarity = card?.rarity;
-  if (typeof rarity === "string") return norm(rarity);
-
-  const fromName = norm(rarity?.name);
-  if (fromName) return fromName;
-
-  const fromSlug = norm(rarity?.slug);
-  if (fromSlug) return fromSlug;
-
-  return "";
-}
 function uniqMerge(prev: Card[], next: Card[]) {
   const map = new Map<string, Card>();
 
@@ -117,4 +99,3 @@ export function useGallery({ identifier, first = 25 }: Options) {
 
   return { cards, loading, loadingMore, error, reload, loadMore };
 }
-

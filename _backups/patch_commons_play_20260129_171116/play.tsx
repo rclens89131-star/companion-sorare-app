@@ -16,7 +16,7 @@ export default function PlayScreen() {
     GK: null, DEF: null, MID: null, FWD: null, FLEX: null,
   });
 
-  const [activeSlot, setActiveSlot] = useState<Slot>("FLEX");
+  const [activeSlot, setActiveSlot] = useState<Slot>("GK");
   const [name, setName] = useState("GW - lineup");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function PlayScreen() {
 
   function reset() {
     setPicked({ GK: null, DEF: null, MID: null, FWD: null, FLEX: null });
-    setActiveSlot("FLEX");
+    setActiveSlot("GK");
     setToast("Reset OK");
     setTimeout(() => setToast(null), 1500);
   }
@@ -51,16 +51,7 @@ export default function PlayScreen() {
     setPicked(next);
   }
 
-  function normalizePos(value: string | null | undefined) {
-  const s = String(value || "").toUpperCase();
-  if (s.includes("GK") || s.includes("GOAL")) return "GK";
-  if (s.includes("DEF")) return "DEF";
-  if (s.includes("MID")) return "MID";
-  if (s.includes("FWD") || s.includes("FOR")) return "FWD";
-  return "";
-}
-
-function tryAdd(cardSlug: string, cardPos: string) {
+  function tryAdd(cardSlug: string, cardPos: string) {
     // retire si déjà présent
     if (pickedSlugs.includes(cardSlug)) {
       removeSlug(cardSlug);
@@ -103,24 +94,17 @@ function tryAdd(cardSlug: string, cardPos: string) {
     return "";
   }
 
-  const filteredGalleryState = useMemo(() => {
-  const want = activeSlot === "FLEX" ? "FLEX" : normalizePos(activeSlot);
-  let filtered = gallery as any[];
-  let isFallback = false;
+  const filteredGallery = useMemo(() => {
+    const want = slotToPos(activeSlot);
+    if (!want) return gallery;
 
-  if (want === "FLEX") {
-    filtered = (gallery as any[]).filter((c: any) => normalizePos(c?.position) !== "GK");
-  } else if (want) {
-    filtered = (gallery as any[]).filter((c: any) => normalizePos(c?.position) === want);
-  }
+    // FLEX = tout sauf GK
+    if (want === "FLEX") {
+      return gallery.filter((c: any) => String(c?.position || "").toUpperCase() !== "GK");
+    }
 
-  if (filtered.length === 0 && (gallery as any[]).length > 0) {
-    filtered = gallery as any[];
-    isFallback = true;
-  }
-
-  return { items: filtered, isFallback };
-}, [gallery, activeSlot]);
+    return gallery.filter((c: any) => String(c?.position || "").toUpperCase() === want);
+  }, [gallery, activeSlot]);
 
   async function save() {
     if (!validation.ok) {
@@ -235,22 +219,17 @@ function tryAdd(cardSlug: string, cardPos: string) {
         <Text style={{ color: theme.muted }}>
           Liste filtrée: {activeSlot === "FLEX" ? "tous postes" : activeSlot} • Sélection: {pickedSlugs.length}/5
         </Text>
-        {filteredGalleryState.isFallback && (
-          <Text style={{ color: theme.muted, marginTop: 4 }}>
-            Aucune carte pour ce poste, affichage de toute la galerie
-          </Text>
-        )}
       </View>
 
       <FlatList
-        data={filteredGalleryState.items}
+        data={filteredGallery}
         keyExtractor={(item: any) => item.id || item.slug}
         contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}
         renderItem={({ item }: any) => (
           <CardListItem
             card={item}
             selected={pickedSlugs.includes(item.slug)}
-            onPress={() => tryAdd(item.slug, normalizePos(item.position))}
+            onPress={() => tryAdd(item.slug, item.position)}
           />
         )}
         ListEmptyComponent={
@@ -262,7 +241,6 @@ function tryAdd(cardSlug: string, cardPos: string) {
     </SafeAreaView>
   );
 }
-
 
 
 
