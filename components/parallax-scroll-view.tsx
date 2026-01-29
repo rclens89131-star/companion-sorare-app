@@ -42,7 +42,7 @@ export default function ParallaxScrollView({
         },
       ],
     };
-  }); as any;
+  }) as any);
 
   return (
     <Animated.ScrollView
@@ -77,4 +77,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
 
