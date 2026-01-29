@@ -26,19 +26,19 @@ export function usePlayerTeams() {
     const p = (async () => {
       try {
         const data = await apiFetch(`/public-player?slug=${encodeURIComponent(playerSlug)}`);
-        const info: TeamInfo = {
-          teamName: (data as any)?.teamName ?? null,
-          teamSlug: (data as any)?.teamSlug ?? null,
-          teamName: ((data as PlayerTeamData)?)?.teamName ?? null,
-          teamSlug: ((data as PlayerTeamData)?)?.teamSlug ?? null,
-          const d = data as PlayerTeamData | null | undefined;
-          teamName: d?.teamName ?? null,
-          teamSlug: d?.teamSlug ?? null,
-        };
+        const d = data as PlayerTeamData | null | undefined;
+const info: TeamInfo = {
+  teamName: d?.teamName ?? null,
+  teamSlug: d?.teamSlug ?? null,
+};
         cacheRef.current[playerSlug] = info;
         return info;
       } catch {
-        const info: TeamInfo = { teamName: null, teamSlug: null };
+        const d = data as PlayerTeamData | null | undefined;
+const info: TeamInfo = {
+  teamName: d?.teamName ?? null,
+  teamSlug: d?.teamSlug ?? null,
+};
         cacheRef.current[playerSlug] = info;
         return info;
       } finally {
@@ -57,6 +57,7 @@ export function usePlayerTeams() {
 
   return { getTeam, peek };
 }
+
 
 
 
