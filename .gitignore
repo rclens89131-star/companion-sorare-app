@@ -60,3 +60,7 @@ _backups/
 # build artifacts
 companion-sorare-app.bundle
 
+
+# local backups
+_backups/
+
