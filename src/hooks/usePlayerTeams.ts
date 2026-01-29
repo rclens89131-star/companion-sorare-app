@@ -2,6 +2,11 @@
 import { apiFetch } from "../api";
 
 type TeamInfo = { teamName: string | null; teamSlug: string | null };
+type PlayerTeamData = {
+  teamName?: string | null;
+  teamSlug?: string | null;
+};
+
 
 export function usePlayerTeams() {
   // cache { playerSlug -> TeamInfo }
@@ -24,6 +29,8 @@ export function usePlayerTeams() {
         const info: TeamInfo = {
           teamName: (data as any)?.teamName ?? null,
           teamSlug: (data as any)?.teamSlug ?? null,
+          teamName: ((data as PlayerTeamData)?)?.teamName ?? null,
+          teamSlug: ((data as PlayerTeamData)?)?.teamSlug ?? null,
         };
         cacheRef.current[playerSlug] = info;
         return info;
@@ -47,5 +54,4 @@ export function usePlayerTeams() {
 
   return { getTeam, peek };
 }
-
 
