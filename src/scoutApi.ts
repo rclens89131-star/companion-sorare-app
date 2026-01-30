@@ -25,6 +25,8 @@ export async function fetchScoutCards(params: {
   after?: string | null;
   eurOnly?: boolean;
   maxEur?: number | null;
+  ts?: number;
+  signal?: AbortSignal;
 }) {
   const qs = new URLSearchParams();
   qs.set("first", String(params.first ?? 20));
@@ -32,8 +34,8 @@ export async function fetchScoutCards(params: {
   if (params.eurOnly) qs.set("eurOnly", "1");
   if (params.maxEur != null && !Number.isNaN(params.maxEur)) qs.set("maxEur", String(params.maxEur));
 
-  return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`);
-}
+    qs.set("ts", String(params.ts ?? Date.now()));
+return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`, { signal: params.signal });}
 
 // Watchlist Scout
 export type WatchItem = { slug: string; addedAt: string };
@@ -78,3 +80,4 @@ export async function deleteScoutAlert(id: string) {
     body: JSON.stringify({ id }),
   });
 }
+
