@@ -43,8 +43,7 @@ async function fetchMarketOffers(baseUrl: string,
   eurOnly = false
 ) {
   const qs = new URLSearchParams();
-  qs.set("deviceId", deviceId);
-  qs.set("first", String(first));
+  if (deviceId) qs.set("deviceId", deviceId);qs.set("first", String(first));
   if (eurOnly) qs.set("eurOnly", "1");
 
   const url = `${baseUrl}/scout/cards?${qs.toString()}`;
