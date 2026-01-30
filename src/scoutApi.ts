@@ -33,8 +33,7 @@ export async function fetchScoutCards(params: {
   if (params.after) qs.set("after", params.after);
   if (params.eurOnly) qs.set("eurOnly", "1");
   if (params.maxEur != null && !Number.isNaN(params.maxEur)) qs.set("maxEur", String(params.maxEur));
-
-    qs.set("ts", String(params.ts ?? Date.now()));
+  qs.set("ts", String(params.ts ?? Date.now()));
 return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`, { signal: params.signal });}
 
 // Watchlist Scout
@@ -80,4 +79,5 @@ export async function deleteScoutAlert(id: string) {
     body: JSON.stringify({ id }),
   });
 }
+
 
