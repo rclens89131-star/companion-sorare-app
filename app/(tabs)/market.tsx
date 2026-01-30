@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿/* XS_MARKET_DEVICEID_OPTIONAL_V2 */
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator,
   FlatList,
   SafeAreaView,
@@ -37,13 +38,15 @@ async function getStoredDeviceId(): Promise<string | null> {
   return (v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
 }
 
-async function fetchMarketOffers(baseUrl: string,
+async function fetchMarketOffers(
+  baseUrl: string,
   deviceId: string | null,
   first = 50,
   eurOnly = false
 ) {
   const qs = new URLSearchParams();
-  if (deviceId) qs.set("deviceId", deviceId);qs.set("first", String(first));
+  if (deviceId) qs.set("deviceId", deviceId);
+  qs.set("first", String(first));
   if (eurOnly) qs.set("eurOnly", "1");
 
   const url = `${baseUrl}/scout/cards?${qs.toString()}`;
@@ -165,11 +168,10 @@ if (footballOnly) {
       setError(null);
 
       const deviceId = await getStoredDeviceId();
-      if (!deviceId) throw new Error("deviceId introuvable. Connecte l'app (device login) puis réessaie.");
 
       setLastDeviceId(deviceId);
 
-      const { url, data } = await fetchMarketOffers(BASE_URL, deviceId, first, eurOnly);
+      const { url, data } = await fetchMarketOffers(BASE_URL, deviceId ?? null, first, eurOnly);
       setLastUrl(url);
 
       {
@@ -526,7 +528,6 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
-
 
 
 
