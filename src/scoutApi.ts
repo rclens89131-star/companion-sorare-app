@@ -36,8 +36,7 @@ export async function fetchScoutCards(params: {
   qs.set("ts", String(params.ts ?? Date.now()));
   return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`, { signal: params.signal });
 }
-
- // Watchlist Scout
+// Watchlist Scout
 export type WatchItem = { slug: string; addedAt: string };
 
 export async function getScoutWatchlist() {
@@ -80,6 +79,7 @@ export async function deleteScoutAlert(id: string) {
     body: JSON.stringify({ id }),
   });
 }
+
 
 
 
