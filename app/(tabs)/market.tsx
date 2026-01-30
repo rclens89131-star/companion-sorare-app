@@ -35,7 +35,8 @@ const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
 
 async function getStoredDeviceId(): Promise<string | null> {
   const v = await AsyncStorage.getItem("deviceId");
-  return (v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
+  return (
+v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
 }
 
 async function fetchMarketOffers(
@@ -79,7 +80,41 @@ function norm(s?: string) {
 export default function MarketScreen() {
   
   
-  // XS_DEVICEID_STATE_V3_BEGIN
+  
+  // XS_TRENDING_UI_V1
+  const BASE_URL =
+    (process.env.EXPO_PUBLIC_BASE_URL as string) ||
+    (process.env.EXPO_PUBLIC_API_URL as string) ||
+    "http://127.0.0.1:3000";
+
+  type TrendingItem = { searchTerm?: string; q?: string; count?: number };
+
+  const [trending, setTrending] = React.useState<TrendingItem[]>([]);
+  const [trendingLoading, setTrendingLoading] = React.useState(false);
+  const [trendingError, setTrendingError] = React.useState<string | null>(null);
+
+  const loadTrending = React.useCallback(async () => {
+    try {
+      setTrendingLoading(true);
+      setTrendingError(null);
+      const r = await fetch(`${BASE_URL}/scout/players/trending?limit=10`); // XS_FIX_TRENDING_FETCH_SEMI_V1
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      const items = Array.isArray(j?.items) ? j.items : [];
+      setTrending(items);
+    } catch (e: any) {
+      setTrendingError(e?.message || "error");
+      setTrending([]);
+    } finally {
+      setTrendingLoading(false);
+    }
+  }, [BASE_URL]);
+
+  React.useEffect(() => {
+    loadTrending();
+  }, [loadTrending]);
+
+// XS_DEVICEID_STATE_V3_BEGIN
   const [deviceId, setDeviceId] = useState<string>("");
 
   useEffect(() => {
@@ -89,7 +124,8 @@ export default function MarketScreen() {
         const v = await getStoredDeviceId(); if (alive && v) setDeviceId(String(v));
       } catch {}
     })();
-    return () => { alive = false; };
+    return (
+) => { alive = false; };
   }, []);
   // XS_DEVICEID_STATE_V3_END
 // XS_MARKET_V3_STATE_V1_BEGIN
@@ -230,8 +266,12 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 
     if (isSkeleton) {
       return (
-        <View style={{ flex: 1, margin: 6 }}>
-          <View
+<View style={{ flex: 1, margin: 6 }}>
+          
+      {
+}
+
+<View
             style={{
               borderRadius: 18,
               overflow: "hidden",
@@ -254,7 +294,7 @@ setMeta({ fromCache: data.fromCache, count: data.count });
     const priceLabel = formatPrice(item);
 
     return (
-      <Pressable onPress={() => xsOpenOffer(item)} style={{ flex: 1, margin: 6 }}>
+<Pressable onPress={() => xsOpenOffer(item)} style={{ flex: 1, margin: 6 }}>
         <View
           style={{
             borderRadius: 18,
@@ -367,8 +407,50 @@ setMeta({ fromCache: data.fromCache, count: data.count });
   // XS_MARKET_CARD_UI_V1
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
-      <View style={{ padding: 12 }}>
+<SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
+      
+{/* XS_TRENDING_TOP_V2 */}
+<View style={{ marginHorizontal: 12, marginTop: 6, marginBottom: 10 }}>
+  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+    <Text style={{ fontSize: 16, fontWeight: "700" }}>Tendances</Text>
+    <Pressable onPress={loadTrending} hitSlop={8}>
+      <Text style={{ fontSize: 12, opacity: 0.8 }}>Rafraîchir</Text>
+    </Pressable>
+  </View>
+
+  {trendingLoading ? (
+    <Text style={{ fontSize: 12, opacity: 0.8 }}>Chargement…</Text>
+  ) : trendingError ? (
+    <Text style={{ fontSize: 12, opacity: 0.8 }}>Erreur: {trendingError}</Text>
+  ) : trending.length === 0 ? (
+    <Text style={{ fontSize: 12, opacity: 0.8 }}>Aucune tendance pour l’instant.</Text>
+  ) : (
+    <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+      {trending.slice(0, 10).map((t, idx) => (
+        <Pressable
+          key={(t.searchTerm || t.q || "t") + "_" + idx}
+          onPress={() => { const term = String(t.searchTerm || t.q || "").trim(); if (term) {/* TODO hook search setter */} }} // XS_FIX_TRENDING_SETQ_V1
+          style={{
+            paddingVertical: 6,
+            paddingHorizontal: 10,
+            borderRadius: 999,
+            borderWidth: 1,
+            marginRight: 8,
+            marginBottom: 8,
+            opacity: 0.95,
+          }}
+        >
+          <Text style={{ fontSize: 12 }}>
+            {t.searchTerm || t.q}{" "}
+            <Text style={{ opacity: 0.7 }}>({t.count || 0})</Text>
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  )}
+</View>
+{/* XS_TRENDING_TOP_V2_END */}
+<View style={{ padding: 12 }}>
         <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>Marché</Text>
 
         {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}
@@ -528,6 +610,15 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
+
+
+
+
+
+
+
+
 
 
 
