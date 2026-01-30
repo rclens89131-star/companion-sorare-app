@@ -37,9 +37,8 @@ async function getStoredDeviceId(): Promise<string | null> {
   return (v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
 }
 
-async function fetchMarketOffers(
-  baseUrl: string,
-  deviceId: string,
+async function fetchMarketOffers(baseUrl: string,
+  deviceId: string | null,
   first = 50,
   eurOnly = false
 ) {
@@ -528,6 +527,7 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
 
 
 
