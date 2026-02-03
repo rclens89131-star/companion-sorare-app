@@ -46,11 +46,15 @@ async function fetchMarketOffers(
   eurOnly = false
 ) {
   const qs = new URLSearchParams();
-  if (deviceId) qs.set("deviceId", deviceId);
+  // XS_FIX_FETCHMARKETOFFER_NO_DEVICEID_V1: never send deviceId to /scout/cards (forces OAuth path -> empty)
   qs.set("first", String(first));
-  if (eurOnly) qs.set("eurOnly", "1");
+  if (eurOnly) {
+    qs.set("eurOnly", "1");
+    qs.set("allowUnknownPrices", "1"); /* XS_ALLOW_UNKNOWN_PRICES_MARKET_V1 */
+  }
 
   const url = `${baseUrl}/scout/cards?${qs.toString()}`;
+  // XS_FIX_NO_DEVICEID_SCOUT_CARDS_V1: do NOT send deviceId to /scout/cards (forces OAuth path -> empty)
   const res = await fetch(url);
   const text = await res.text();
 
@@ -66,6 +70,7 @@ async function fetchMarketOffers(
 }
 
 function formatPrice(o: MarketOffer) {
+  if (o?.priceText != null && !String(o.priceText).trim()) return "—"; // XS_ALLOW_UNKNOWN_PRICES_UI_V2
   if (o?.priceText && o.priceText.trim()) return o.priceText;
   if (typeof o?.eur === "number") return `€${o.eur.toFixed(2)}`;
   if (o?.wei) return `WEI ${o.wei}`;
@@ -139,12 +144,11 @@ export default function MarketScreen() {
   const xsCloseOffer = () => setModalOpen(false);
   // XS_MARKET_V3_STATE_V1_END
 const [offers, setOffers] = useState<MarketOffer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [meta, setMeta] = useState<{ fromCache?: boolean; count?: number } | null>(null);
-
-  // UI settings
+  const [error, setError] = useState<string | null>(null); // XS_FIX_ERROR_STATE_V1
+  const [loading, setLoading] = useState(false); // XS_FIX_LOADING_STATE_V2
+  const [meta, setMeta] = useState<{ fromCache?: boolean; count?: number } | null>(null); // XS_FIX_META_STATE_V1
+  
+  const [fetchedAt, setFetchedAt] = useState<number>(0); // XS_DEBUG_PROBE_V1 // UI settings
   const [first, setFirst] = useState(50);
   const [eurOnly, setEurOnly] = useState(false);
   const [footballOnly, setFootballOnly] = useState(true);
@@ -161,6 +165,17 @@ const [offers, setOffers] = useState<MarketOffer[]>([]);
     const eurCount = offers.filter(o => typeof o.eur === "number" && o.eur !== null).length;
     return { fetched, eurCount };
   }, [offers]);
+  // XS_MARKET_DEBUG_COUNTS_V1_BEGIN
+  const debugCounts = useMemo(() => {
+    const arr = Array.isArray(offers) ? offers : [];
+    const eurNum = arr.filter(o => typeof (o as any).eur === "number").length;
+    const ptNotNull = arr.filter(o => (o as any).priceText != null).length;
+    const ptEmpty = arr.filter(o => (o as any).priceText != null && !String((o as any).priceText).trim()).length;
+    const ptNonEmpty = arr.filter(o => (o as any).priceText != null && String((o as any).priceText).trim()).length;
+    const teamSlug = arr.filter(o => Boolean((o as any).teamSlug)).length;
+    return { total: arr.length, eurNum, ptNotNull, ptEmpty, ptNonEmpty, teamSlug };
+  }, [offers]);
+  // XS_MARKET_DEBUG_COUNTS_V1_END
   // XS_MARKET_V3_PREFETCH_V1_BEGIN
   useEffect(() => {
     try {
@@ -181,7 +196,7 @@ if (footballOnly) {
     }
 
     if (eurOnly) {
-      arr = arr.filter(o => (typeof o.eur === "number" && o.eur !== null) || (o.priceText && o.priceText.trim()) || o.eth || o.wei || (o.price?.currency === "WEI" && o.price?.amount));
+      arr = arr.filter(o => (typeof o.eur === "number" && o.eur !== null) || (o.priceText != null) /* XS_ALLOW_UNKNOWN_PRICES_APP_V1 */ || o.eth || o.wei || (o.price?.currency === "WEI" && o.price?.amount));
     }
 
     if (rarity !== "all") {
@@ -210,14 +225,21 @@ if (footballOnly) {
       const { url, data } = await fetchMarketOffers(BASE_URL, deviceId ?? null, first, eurOnly);
       setLastUrl(url);
 
-      {
+      
+      // XS_DEBUG_PROBE_UI_V1_NOTE: UI hook not auto-injected (no <Text>{lastUrl}</Text> exact match).{
         const raw = Array.isArray(data.items) ? data.items : [];
         const normalized = raw.map((it: any, idx: number) => ({
           ...it,
+          // XS_FIX_SCOUT_NORMALIZE_FIELDS_V1_BEGIN
+          cardSlug: String(it?.cardSlug || it?.slug || ""),
+          cardName: String(it?.cardName || it?.playerName || ""),
+          collection: it?.collection ?? ((it?.team || it?.playerName || it?.positions) ? "football" : undefined),
+          // XS_FIX_SCOUT_NORMALIZE_FIELDS_V1_END
           id: String(it?.offerId || it?.slug || it?.cardSlug || it?.id || ("row-" + idx)),
         }));
         setOffers(normalized);
-      }
+      
+        setFetchedAt(Date.now()); // XS_DEBUG_PROBE_V1}
 setMeta({ fromCache: data.fromCache, count: data.count });
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -488,8 +510,16 @@ setMeta({ fromCache: data.fromCache, count: data.count });
           <Chip label={sortAsc ? "Tri: prix ↑" : "Tri: prix ↓"} active={true} onPress={() => setSortAsc(v => !v)} />
           <Chip label={footballOnly ? "FOOTBALL: ON" : "FOOTBALL: OFF"} active={footballOnly} onPress={() => setFootballOnly(v => !v)} />
           <Chip label={eurOnly ? "EUR: ON" : "EUR: OFF"} active={eurOnly} onPress={() => setEurOnly(v => !v)} />
-          <Chip label={showDebug ? "Debug: ON" : "Debug: OFF"} active={showDebug} onPress={() => setShowDebug(v => !v)} />
-        </View>
+          <Chip label={showDebug ? "Debug: ON /* XS_DEBUG_PROBE_UI_V1 */" : "Debug: OFF /* XS_DEBUG_PROBE_UI_V1 */"} active={showDebug} onPress={() => setShowDebug(v => !v)} />
+        
+        {/* XS_MARKET_DEBUG_COUNTS_V1_RENDER */}
+        {showDebug ? (
+          <View style={{ marginTop: 6, paddingHorizontal: 2 }}>
+            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 11 }}>
+              offers={offers.length} shown={shown.length} eurNum={debugCounts.eurNum} priceText!=null={debugCounts.ptNotNull} emptyPT={debugCounts.ptEmpty} nonEmptyPT={debugCounts.ptNonEmpty} teamSlug={debugCounts.teamSlug}
+            </Text>
+          </View>
+        ) : null}</View>
 
         <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2 }}>
           <Chip label="Rareté: ALL" active={rarity === "all"} onPress={() => setRarity("all")} />
@@ -610,6 +640,23 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

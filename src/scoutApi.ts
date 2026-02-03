@@ -7,6 +7,7 @@ export type ScoutOffer = {
   seasonYear?: number | null;
   pictureUrl?: string | null;
   eur?: number | null;
+  priceText?: string | null; // XS_ALLOW_UNKNOWN_PRICES_APP_V1
 };
 
 export type PageInfo = {
@@ -31,7 +32,10 @@ export async function fetchScoutCards(params: {
   const qs = new URLSearchParams();
   qs.set("first", String(params.first ?? 20));
   if (params.after) qs.set("after", params.after);
-  if (params.eurOnly) qs.set("eurOnly", "1");
+  if (params.eurOnly) {
+    qs.set("eurOnly", "1");
+    qs.set("allowUnknownPrices", "1"); // XS_ALLOW_UNKNOWN_PRICES_APP_V1
+  }
   if (params.maxEur != null && !Number.isNaN(params.maxEur)) qs.set("maxEur", String(params.maxEur));
   qs.set("ts", String(params.ts ?? Date.now()));
   return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`, { signal: params.signal });
@@ -79,6 +83,7 @@ export async function deleteScoutAlert(id: string) {
     body: JSON.stringify({ id }),
   });
 }
+
 
 
 
