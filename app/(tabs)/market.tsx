@@ -35,8 +35,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
 
 async function getStoredDeviceId(): Promise<string | null> {
   const v = await AsyncStorage.getItem("deviceId");
-  return (
-v && v.trim() ? v.trim() : "dev_mkwlzdch_ux00v6v0qj"); // fallback debug
+  return (v && v.trim() ? v.trim() : null); // XS_GETSTOREDDEVICEID_PUBLIC_V1
 }
 
 async function fetchMarketOffers(
@@ -217,7 +216,7 @@ if (footballOnly) {
       setLoading(true);
       setError(null);
 
-      const deviceId = await getStoredDeviceId();
+      const deviceId = await getStoredDeviceId().catch(() => null); // XS_RECRUIT_FIX_LOAD_DEVICEID_OPTIONAL_V1
 
       setLastDeviceId(deviceId);
 
@@ -474,16 +473,7 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 <View style={{ padding: 12 }}>
         <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>Marché</Text>
 
-        {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}
-        {(!deviceId || !String(deviceId).trim()) ? (
-          <View style={{ marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: "#111", borderWidth: 1, borderColor: "#222" }}>
-            <Text style={{ color: "white", fontWeight: "900" }}>Compte non lié</Text>
-            <Text style={{ marginTop: 6, color: "#bbb" }}>
-              Connecte ton compte Sorare (deviceId) puis reviens ici.
-            </Text>
-          </View>
-        ) : null}
-        {/* XS_FIX_HOOKS_GATING_UI_V1_END */}
+        {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}{/* public mode: no account link required */}{/* XS_FIX_HOOKS_GATING_UI_V1_END */}
 
         <TouchableOpacity
           onPress={loadOffers}
