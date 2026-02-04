@@ -35,9 +35,8 @@ const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
 
 async function getStoredDeviceId(): Promise<string | null> {
   const v = await AsyncStorage.getItem("deviceId");
-  return (v && v.trim() ? v.trim() : null); // XS_GETSTOREDDEVICEID_PUBLIC_V1
+  return (v && v.trim() ? v.trim() : null); // XS_GETSTOREDDEVICEID_PUBLIC_V2
 }
-
 async function fetchMarketOffers(
   baseUrl: string,
   deviceId: string | null,
@@ -629,5 +628,6 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
 
 
