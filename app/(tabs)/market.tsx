@@ -49,7 +49,6 @@ async function fetchMarketOffers(
   // XS_FIX_FETCHMARKETOFFER_NO_DEVICEID_V1: never send deviceId to /scout/cards (forces OAuth path -> empty)
   qs.set("first", String(first));
   if (eurOnly) {
-    qs.set("eurOnly", "1");
     qs.set("allowUnknownPrices", "1"); /* XS_ALLOW_UNKNOWN_PRICES_MARKET_V1 */
   }
 
@@ -640,6 +639,10 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
+
+
+
 
 
 
