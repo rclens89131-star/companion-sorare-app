@@ -5,25 +5,45 @@ import { ActivityIndicator,
   SafeAreaView,
   Text,
   TouchableOpacity,
-  View, Image, Modal, Pressable } from "react-native";
+  View, Image, Modal, Pressable, TextInput } from "react-native"; /* XS_RECRUTER_UI_V1_IMPORT */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type MarketOffer = {
   id: string;
   status?: string;
+
   cardSlug?: string;
   cardName?: string;
-  pictureUrl?: string;  // XS_MARKET_APP_IMG_V1
+
+  pictureUrl?: string; // XS_MARKET_APP_IMG_V1
   rarity?: string;
   collection?: string;
+
   eur?: number | null;
+  eth?: number | null;
   wei?: string | null;
-  eth?: string | null;
+
   price?: { currency: "EUR" | "WEI" | string; amount: any } | null;
   priceText?: string;
+
+  [k: string]: any;
 };
 
-type MarketOffersResponse = {
+// XS_MARKET_DEDUPE_OFFERS_V1: avoid duplicate offers when pagination returns same items
+function offerKeyV1(o: MarketOffer) {
+  return String(o?.id || o?.cardSlug || "");
+}
+function dedupeOffersByKey(prev: MarketOffer[], next: MarketOffer[]) {
+  const map = new Map<string, MarketOffer>();
+  const put = (o: MarketOffer) => {
+    const k = offerKeyV1(o);
+    if (!k) return;
+    map.set(k, o);
+  };
+  prev.forEach(put);
+  next.forEach(put);
+  return Array.from(map.values());
+}type MarketOffersResponse = {
   ok: boolean;
   fromCache?: boolean;
   count?: number;   // total renvoyé par backend (après ses filtres)
@@ -153,7 +173,14 @@ const [offers, setOffers] = useState<MarketOffer[]>([]);
   const [sortAsc, setSortAsc] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
 
-  // debug
+  
+
+  // XS_RECRUTER_UI_V1_BEGIN
+  const [activeTab, setActiveTab] = useState<"Explore" | "Recruter" | "Watchlists">("Recruter");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [titulaireOnly, setTitulaireOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // XS_RECRUTER_UI_V1_END// debug
   const [lastUrl, setLastUrl] = useState<string | null>(null);
   const [lastDeviceId, setLastDeviceId] = useState<string | null>(null);
 
@@ -206,6 +233,14 @@ if (footballOnly) {
       const be = typeof b.eur === "number" ? b.eur : Number.POSITIVE_INFINITY;
       return sortAsc ? (ae - be) : (be - ae);
     });
+
+    
+
+    // XS_RECRUTER_UI_V1_SEARCH
+    if (searchQuery.trim()) {
+      const q = norm(searchQuery);
+      arr = arr.filter((o) => norm(o.cardName).includes(q) || norm(o.cardSlug).includes(q));
+    }
 
     return arr;
   }, [offers, eurOnly, footballOnly, rarity, sortAsc]);
@@ -269,164 +304,79 @@ setMeta({ fromCache: data.fromCache, count: data.count });
     </TouchableOpacity>
   );
 
-        const renderItem = ({ item }: { item: MarketOffer }) => {
+          // XS_RECRUTER_UI_V1_ROWS_BEGIN
+  const renderItem = ({ item }: { item: MarketOffer }) => {
     const isSkeleton = typeof item?.id === "string" && item.id.startsWith("sk-");
-
-    const rarityKey = String(item?.rarity || "").toLowerCase();
-    const rarityLabel = (rarityKey || "—").replace(/_/g, " ").toUpperCase();
-
-    const rarityStyle = (() => {
-      if (rarityKey === "unique") return { bg: "rgba(255, 215, 0, 0.16)", bd: "rgba(255, 215, 0, 0.35)" };
-      if (rarityKey === "super_rare") return { bg: "rgba(0, 200, 255, 0.14)", bd: "rgba(0, 200, 255, 0.32)" };
-      if (rarityKey === "rare") return { bg: "rgba(255, 80, 180, 0.14)", bd: "rgba(255, 80, 180, 0.30)" };
-      if (rarityKey === "limited") return { bg: "rgba(120, 255, 120, 0.12)", bd: "rgba(120, 255, 120, 0.26)" };
-      return { bg: "rgba(255,255,255,0.10)", bd: "rgba(255,255,255,0.18)" };
-    })();
-
     if (isSkeleton) {
       return (
-<View style={{ flex: 1, margin: 6 }}>
-          
-      {
-}
-
-<View
-            style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              borderWidth: 1,
-              borderColor: "#1d1d1f",
-              backgroundColor: "#0b0b10",
-            }}
-          >
-            <View style={{ width: "100%", aspectRatio: 0.72, backgroundColor: "#14141a" }} />
-            <View style={{ padding: 12 }}>
-              <View style={{ height: 14, borderRadius: 8, backgroundColor: "#1b1b22", width: "88%" }} />
-              <View style={{ height: 12, borderRadius: 8, backgroundColor: "#1b1b22", width: "60%", marginTop: 10 }} />
-              <View style={{ height: 12, borderRadius: 8, backgroundColor: "#1b1b22", width: "40%", marginTop: 8 }} />
+        <View style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1a1a1f" }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ width: 54, height: 72, borderRadius: 8, backgroundColor: "#17171d" }} />
+            <View style={{ marginLeft: 10, flex: 1 }}>
+              <View style={{ width: "70%", height: 12, borderRadius: 8, backgroundColor: "#17171d" }} />
+              <View style={{ width: "40%", height: 10, borderRadius: 8, backgroundColor: "#17171d", marginTop: 8 }} />
             </View>
           </View>
         </View>
       );
     }
 
-    const priceLabel = formatPrice(item);
-
     return (
-<Pressable onPress={() => xsOpenOffer(item)} style={{ flex: 1, margin: 6 }}>
-        <View
-          style={{
-            borderRadius: 18,
-            overflow: "hidden",
-            borderWidth: 1,
-            borderColor: "#1d1d1f",
-            backgroundColor: "#0b0b10",
-          }}
-        >
+      <Pressable
+        onPress={() => xsOpenOffer(item)}
+        style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1a1a1f" }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           {item.pictureUrl ? (
-            <Image
-              source={{ uri: item.pictureUrl }}
-              style={{ width: "100%", aspectRatio: 0.72 }}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: item.pictureUrl }} style={{ width: 54, height: 72, borderRadius: 8, backgroundColor: "#121217" }} resizeMode="cover" />
           ) : (
-            <View
-              style={{
-                width: "100%",
-                aspectRatio: 0.72,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#111",
-              }}
-            >
-              <Text style={{ color: "#666", fontWeight: "800" }}>Image indisponible</Text>
+            <View style={{ width: 54, height: 72, borderRadius: 8, backgroundColor: "#151519", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: "#666", fontSize: 10, fontWeight: "700" }}>No image</Text>
             </View>
           )}
 
-          {/* Gloss */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: -50,
-              left: -70,
-              width: 190,
-              height: 140,
-              backgroundColor: "rgba(255,255,255,0.10)",
-              borderRadius: 40,
-              transform: [{ rotate: "-22deg" }],
-            }}
-          />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <Text numberOfLines={1} style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>
+              {item.cardName || item.cardSlug || item.id}
+            </Text>
 
-          {/* Bottom overlay */}
-          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-            <View style={{ padding: 12 }}>
-              <View
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  top: 0,
-                  backgroundColor: "rgba(0,0,0,0.62)",
-                }}
-              />
+            {/* placeholders: poste/âge tant qu’on n’a pas l’enrichissement joueur */}
+            <Text style={{ marginTop: 4, color: "#8f95a3", fontSize: 12, fontWeight: "600" }}>DF • 26 ans</Text>
 
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text numberOfLines={2} style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
-                    {item.cardName || item.cardSlug || item.id}
-                  </Text>
-
-                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 8 }}>
-                    <View
-                      style={{
-                        paddingVertical: 4,
-                        paddingHorizontal: 10,
-                        borderRadius: 999,
-                        backgroundColor: rarityStyle.bg,
-                        borderWidth: 1,
-                        borderColor: rarityStyle.bd,
-                      }}
-                    >
-                      <Text style={{ color: "white", fontSize: 11, fontWeight: "900" }}>{rarityLabel}</Text>
-                    </View>
-                  </View>
+            {/* placeholders stats */}
+            <View style={{ flexDirection: "row", marginTop: 8 }}>
+              {["L5 42", "L15 49", "L40 51"].map((badge) => (
+                <View key={badge} style={{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: "#171a22", marginRight: 6 }}>
+                  <Text style={{ color: "#b8c2d9", fontSize: 10, fontWeight: "700" }}>{badge}</Text>
                 </View>
-
-                <View style={{ alignItems: "flex-end" }}>
-                  <View
-                    style={{
-                      paddingVertical: 7,
-                      paddingHorizontal: 12,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(255,255,255,0.14)",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.20)",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "900", fontSize: 13 }}>{priceLabel}</Text>
-                  </View>
-                </View>
-              </View>
+              ))}
             </View>
+          </View>
 
-            {showDebug && item.cardSlug ? (
-              <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
-                <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 11 }}>{item.cardSlug}</Text>
-              </View>
-            ) : null}
+          <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+            <Text style={{ color: "#fff", fontWeight: "900", fontSize: 14 }}>{formatPrice(item)}</Text>
+            <Pressable
+              onPress={() => {}}
+              hitSlop={8}
+              style={{ marginTop: 8, width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: "#2a2d36", alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: "#c8ccd5", fontWeight: "900" }}>···</Text>
+            </Pressable>
           </View>
         </View>
       </Pressable>
     );
   };
+  // XS_RECRUTER_UI_V1_ROWS_END
+
   // XS_MARKET_GRID_V2
   // XS_MARKET_V3_V1
   // XS_MARKET_CARD_UI_V1
 
   return (
 <SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
+<View style={{ padding: 12, backgroundColor: '#ff00ff' }}><Text style={{ color: 'black', fontWeight: '900' }}>XS_UI_MARKET_PROBE_V1 — SI TU VOIS PAS ÇA, T’ES PAS SUR CE FICHIER</Text></View>
+
       
 {/* XS_TRENDING_TOP_V2 */}
 <View style={{ marginHorizontal: 12, marginTop: 6, marginBottom: 10 }}>
@@ -470,7 +420,87 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </View>
 {/* XS_TRENDING_TOP_V2_END */}
 <View style={{ padding: 12 }}>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>Marché</Text>
+        <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>Recruter</Text>
+
+{/* XS_RECRUTER_UI_V1_TOP_BEGIN */}
+<View style={{ flexDirection: "row", marginTop: 12, backgroundColor: "#111218", borderRadius: 10, padding: 4 }}>
+  {(["Explore", "Recruter", "Watchlists"] as const).map((tab) => (
+    <Pressable
+      key={tab}
+      onPress={() => setActiveTab(tab)}
+      style={{
+        flex: 1,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: activeTab === tab ? "#232634" : "transparent",
+        alignItems: "center",
+      }}
+    >
+      <Text style={{ color: activeTab === tab ? "#fff" : "#7f8698", fontWeight: "700", fontSize: 12 }}>{tab}</Text>
+    </Pressable>
+  ))}
+</View>
+
+<View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+  <TextInput
+    value={searchQuery}
+    onChangeText={setSearchQuery}
+    placeholder="Rechercher un joueur"
+    placeholderTextColor="#6f7585"
+    style={{
+      flex: 1,
+      backgroundColor: "#12131a",
+      borderWidth: 1,
+      borderColor: "#232634",
+      color: "white",
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontWeight: "600",
+    }}
+  />
+  <Pressable
+    onPress={() => setFiltersOpen((v) => !v)}
+    style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1b1d27", borderWidth: 1, borderColor: "#2a2d36" }}
+  >
+    <Text style={{ color: "white", fontWeight: "700" }}>Filtres</Text>
+  </Pressable>
+</View>
+
+<View style={{ marginTop: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+  <Text style={{ color: "#8f95a3", fontWeight: "700" }}>Titulaires</Text>
+  <Pressable
+    onPress={() => setTitulaireOnly((v) => !v)}
+    style={{
+      width: 44,
+      height: 24,
+      borderRadius: 999,
+      backgroundColor: titulaireOnly ? "#1f6feb" : "#2a2d36",
+      padding: 3,
+      justifyContent: "center",
+    }}
+  >
+    <View
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: "#fff",
+        alignSelf: titulaireOnly ? "flex-end" : "flex-start",
+      }}
+    />
+  </Pressable>
+</View>
+
+{filtersOpen ? (
+  <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
+    <Chip label={sortAsc ? "Tri: prix ↑" : "Tri: prix ↓"} active={true} onPress={() => setSortAsc((v) => !v)} />
+    <Chip label={footballOnly ? "FOOTBALL: ON" : "FOOTBALL: OFF"} active={footballOnly} onPress={() => setFootballOnly((v) => !v)} />
+    <Chip label={eurOnly ? "EUR: ON" : "EUR: OFF"} active={eurOnly} onPress={() => setEurOnly((v) => !v)} />
+    <Chip label={showDebug ? "Debug: ON" : "Debug: OFF"} active={showDebug} onPress={() => setShowDebug((v) => !v)} />
+  </View>
+) : null}
+{/* XS_RECRUTER_UI_V1_TOP_END */}
 
         {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}{/* public mode: no account link required */}{/* XS_FIX_HOOKS_GATING_UI_V1_END */}
 
@@ -535,17 +565,33 @@ setMeta({ fromCache: data.fromCache, count: data.count });
         </View>
       ) : null}
 
+      {/* XS_FIX_COLUMNWRAPPER_SINGLECOL_V1: remove columnWrapperStyle when numColumns=1 */}
       <FlatList
-        numColumns={2}
-        columnWrapperStyle={{ gap: 0 }}
+        numColumns={1} /* XS_RECRUTER_UI_V1_LIST */
         data={(loading && shown.length === 0) ? Array.from({ length: 6 }, (_, i) => ({ id: "sk-" + i } as any)) : shown}
         keyExtractor={(it, idx) => String((it as any)?.offerId || (it as any)?.slug || (it as any)?.id || idx)}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         refreshing={loading}
         onRefresh={loadOffers}
       />
-          {/* XS_MARKET_V3_MODAL_V1_BEGIN */}
+          {/* XS_MARKET_V3_MODAL_V1_BEGIN */
+<Pressable
+  style={{
+    position: "absolute",
+    bottom: 20,
+    alignSelf: "center",
+    backgroundColor: "#1f6feb",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  }}
+  onPress={() => {}}
+>
+  <Text style={{ color: "white", fontWeight: "800" }}>Mode avancé</Text>
+</Pressable>}
       <Modal visible={modalOpen} animationType="slide" transparent={true} onRequestClose={xsCloseOffer}>
         <Pressable
           onPress={xsCloseOffer}
@@ -628,4 +674,8 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
+
+
+
 

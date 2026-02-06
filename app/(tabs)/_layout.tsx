@@ -43,7 +43,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="market"
         options={{
-          title: "Scout-Marché",
+          title: "MARCHÉ_PROBE_V1" /* XS_TABS_LABEL_PROBE_V1 */,
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
         }}
       />
@@ -64,4 +64,5 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
 
