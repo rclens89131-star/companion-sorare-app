@@ -55,7 +55,8 @@ const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
 
 async function getStoredDeviceId(): Promise<string | null> {
   const v = await AsyncStorage.getItem("deviceId");
-  return (v && v.trim() ? v.trim() : null); // XS_GETSTOREDDEVICEID_PUBLIC_V2
+  /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return (v && v.trim() ? v.trim() : null); // XS_GETSTOREDDEVICEID_PUBLIC_V2
 }
 async function fetchMarketOffers(
   baseUrl: string,
@@ -103,13 +104,29 @@ export default function MarketScreen() {
   
   
   
-  // XS_TRENDING_UI_V1
+  
+  // XS_UI_MARKET_SHELL_STATE_V1
+  const [uiTab, setUiTab] = useState<"watchlist" | "marche" | "alertes">("watchlist");
+  const [marketLoaded, setMarketLoaded] = useState(false);
+  const [qUi, setQUi] = useState("");
+// XS_TRENDING_UI_V1
   const BASE_URL =
     (process.env.EXPO_PUBLIC_BASE_URL as string) ||
     (process.env.EXPO_PUBLIC_API_URL as string) ||
     "http://127.0.0.1:3000";
 
   type TrendingItem = { searchTerm?: string; q?: string; count?: number };
+
+  // XS_UI_MARKET_LOAD_ON_DEMAND_V1
+  const loadMarketOnDemand = async () => {
+    if (marketLoaded) return;
+    setMarketLoaded(true);
+    try {
+      await loadOffers(true); // XS_UI_MARKET_LOAD_ON_DEMAND_CALL_LOADOFFERS_V1
+    } catch (e) {
+      // laisse l'erreur UI existante gérer si tu en as une
+    }
+  };
 
   const [trending, setTrending] = React.useState<TrendingItem[]>([]);
   const [trendingLoading, setTrendingLoading] = React.useState(false);
@@ -146,8 +163,8 @@ export default function MarketScreen() {
         const v = await getStoredDeviceId(); if (alive && v) setDeviceId(String(v));
       } catch {}
     })();
-    return (
-) => { alive = false; };
+    /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return () => { alive = false; };
   }, []);
   // XS_DEVICEID_STATE_V3_END
 // XS_MARKET_V3_STATE_V1_BEGIN
@@ -245,7 +262,9 @@ if (footballOnly) {
     return arr;
   }, [offers, eurOnly, footballOnly, rarity, sortAsc]);
 
-  const loadOffers = async () => {
+  const loadOffers = async (force?: boolean) => {
+    // XS_UI_MARKET_LOADOFFERS_FORCE_V1: gate market load unless forced
+    if (!force && !marketLoaded) { return; }
     try {
       setLoading(true);
       setError(null);
@@ -308,8 +327,8 @@ setMeta({ fromCache: data.fromCache, count: data.count });
   const renderItem = ({ item }: { item: MarketOffer }) => {
     const isSkeleton = typeof item?.id === "string" && item.id.startsWith("sk-");
     if (isSkeleton) {
-      return (
-        <View style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1a1a1f" }}>
+      /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return (<View style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1a1a1f" }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View style={{ width: 54, height: 72, borderRadius: 8, backgroundColor: "#17171d" }} />
             <View style={{ marginLeft: 10, flex: 1 }}>
@@ -321,8 +340,8 @@ setMeta({ fromCache: data.fromCache, count: data.count });
       );
     }
 
-    return (
-      <Pressable
+    /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return (<Pressable
         onPress={() => xsOpenOffer(item)}
         style={{ paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#1a1a1f" }}
       >
@@ -373,9 +392,74 @@ setMeta({ fromCache: data.fromCache, count: data.count });
   // XS_MARKET_V3_V1
   // XS_MARKET_CARD_UI_V1
 
-  return (
-<SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
+  /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return (<SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
 <View style={{ padding: 12, backgroundColor: '#ff00ff' }}><Text style={{ color: 'black', fontWeight: '900' }}>XS_UI_MARKET_PROBE_V1 — SI TU VOIS PAS ÇA, T’ES PAS SUR CE FICHIER</Text></View>
+
+{/* XS_UI_MARKET_SHELL_V1 */}
+<View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 }}>
+  <Text style={{ fontSize: 22, fontWeight: "800" }}>Recruter</Text>
+  <Text style={{ opacity: 0.7, marginTop: 2 }}>Watchlist, Marché, Alertes — et rien ne charge sans ton feu vert.</Text>
+
+  <View style={{ marginTop: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 }}>
+    <TextInput
+      value={qUi}
+      onChangeText={setQUi}
+      placeholder="Rechercher un joueur, un club, une ligue…"
+      placeholderTextColor="rgba(255,255,255,0.45)"
+      style={{ color: "white" }}
+      autoCapitalize="none"
+      autoCorrect={false}
+      returnKeyType="search"
+    />
+  </View>
+
+  <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+    {[
+      ["watchlist","Watchlist"],
+      ["marche","Marché"],
+      ["alertes","Alertes"],
+    ].map(([key,label]) => {
+      const active = uiTab === key;
+      /* XS_UI_MARKET_RENDER_GATE_HINT_V1: etape suivante -> conditionner le rendu marche sur uiTab==='marche' */
+return (<Pressable
+          key={key}
+          onPress={() => setUiTab(key as any)}
+          style={{
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: active ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)",
+            backgroundColor: active ? "rgba(255,255,255,0.10)" : "transparent",
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: active ? "700" : "600" }}>{label}</Text>
+        </Pressable>
+      );
+    })}
+  </View>
+
+  {uiTab === "marche" && !marketLoaded && (
+    <Pressable
+      onPress={loadMarketOnDemand}
+      style={{
+        marginTop: 12,
+        paddingVertical: 12,
+        borderRadius: 14,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.18)",
+        backgroundColor: "rgba(255,255,255,0.06)",
+      }}
+    >
+      <Text style={{ color: "white", fontWeight: "800" }}>Charger le marché</Text>
+      <Text style={{ color: "rgba(255,255,255,0.7)", marginTop: 2, fontSize: 12 }}>
+        (pas de chargement auto — moins de rate-limit)
+      </Text>
+    </Pressable>
+  )}
+</View>
 
       
 {/* XS_TRENDING_TOP_V2 */}
@@ -505,7 +589,7 @@ setMeta({ fromCache: data.fromCache, count: data.count });
         {/* XS_FIX_HOOKS_GATING_UI_V1_BEGIN */}{/* public mode: no account link required */}{/* XS_FIX_HOOKS_GATING_UI_V1_END */}
 
         <TouchableOpacity
-          onPress={loadOffers}
+          onPress={() => { setMarketLoaded(true); loadOffers(true); }} /* XS_UI_MARKET_ONPRESS_SETLOADED_V1 */
           disabled={loading}
           style={{
             marginTop: 12,
@@ -674,6 +758,11 @@ setMeta({ fromCache: data.fromCache, count: data.count });
 </SafeAreaView>
   );
 }
+
+
+
+
+
 
 
 
