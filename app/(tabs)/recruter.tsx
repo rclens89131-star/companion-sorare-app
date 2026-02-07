@@ -1,29 +1,24 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { scoutRecruter, type RecruiterRow } from "@/src/scoutApi";
 
-const formatEur = (n?: number | null) => {
-  if (n === null || n === undefined) return "—";
-  try { return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n); }
-  catch { return `${n}€`; }
-};
-
-export default function RecruterScreen() {
+/* XS_RECRUTER_TAB_V1: minimal Recruter tab (list players from /scout/recruter) */
+export default function RecruterTab() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [items, setItems] = useState<RecruiterRow[]>([]);
-  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const [rows, setRows] = useState<RecruiterRow[]>([]);
+  const [meta, setMeta] = useState<any>(null);
 
-  const load = async (qq?: string) => {
+  const load = async (query?: string) => {
     setLoading(true);
     setErr(null);
     try {
-      const res = await scoutRecruter({ first: 60, q: (qq ?? q).trim() || undefined });
-      setItems(res.items ?? []);
-      setFetchedAt(Date.now());
+      const res = await scoutRecruter({ first: 60, q: query ?? "" });
+      setRows(res.items ?? []);
+      setMeta(res.meta ?? null);
     } catch (e: any) {
       setErr(e?.message ?? String(e));
     } finally {
@@ -33,104 +28,97 @@ export default function RecruterScreen() {
 
   useEffect(() => { load(""); }, []);
 
-  const data = useMemo(() => items, [items]);
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter(r =>
+      String(r.playerName ?? "").toLowerCase().includes(s) ||
+      String(r.playerSlug ?? "").toLowerCase().includes(s) ||
+      String(r.teamName ?? "").toLowerCase().includes(s)
+    );
+  }, [q, rows]);
 
   return (
-    <View style={{ flex: 1, padding: 12, gap: 10 }}>
-      <Text style={{ fontSize: 20, fontWeight: "800" }}>Recruter</Text>
+    <View style={{ flex: 1, backgroundColor: "black" }}>
+      <View style={{ padding: 12, paddingTop: 16 }}>
+        <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>Recruter</Text>
+        <Text style={{ color: "#888", marginTop: 4 }}>
+          Liste de joueurs (agrégé depuis le marché public).
+        </Text>
 
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <TextInput
-          value={q}
-          onChangeText={setQ}
-          placeholder="Recherche (nom, slug, club)..."
-          placeholderTextColor="#888"
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: "#333",
-            borderRadius: 10,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            color: "white",
-            backgroundColor: "#111",
-          }}
-          onSubmitEditing={() => load()}
-          returnKeyType="search"
-        />
-        <Pressable
-          onPress={() => load()}
-          style={{
-            paddingHorizontal: 14,
-            borderRadius: 10,
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 1,
-            borderColor: "#333",
-            backgroundColor: "#1a1a1a",
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "700" }}>Go</Text>
-        </Pressable>
+        <View style={{ marginTop: 10, flexDirection: "row", gap: 8 }}>
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Rechercher joueur / club…"
+            placeholderTextColor="#666"
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: "#2a2a2a",
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              color: "white",
+              backgroundColor: "#0f0f0f",
+            }}
+          />
+          <Pressable
+            onPress={() => load(q)}
+            style={{ paddingHorizontal: 12, justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: "#2a2a2a", backgroundColor: "#111" }}
+          >
+            <Text style={{ color: "white", fontWeight: "800" }}>Go</Text>
+          </Pressable>
+        </View>
+
+        {meta ? (
+          <Text style={{ color: "#666", marginTop: 8 }}>
+            {filtered.length} joueurs • fetchedAt: {meta.fetchedAt ?? "—"}
+          </Text>
+        ) : null}
       </View>
 
       {loading ? (
-        <View style={{ paddingTop: 16 }}>
+        <View style={{ paddingTop: 24 }}>
           <ActivityIndicator />
         </View>
       ) : err ? (
-        <View style={{ padding: 12, borderWidth: 1, borderColor: "#5a1", borderRadius: 10 }}>
-          <Text style={{ color: "white", fontWeight: "700" }}>Erreur</Text>
-          <Text style={{ color: "#ccc" }}>{err}</Text>
+        <View style={{ margin: 12, padding: 12, borderWidth: 1, borderColor: "#5a1", borderRadius: 12 }}>
+          <Text style={{ color: "white", fontWeight: "900" }}>Erreur</Text>
+          <Text style={{ color: "#ccc", marginTop: 6 }}>{err}</Text>
         </View>
-      ) : data.length === 0 ? (
-        <View style={{ padding: 12 }}>
-          <Text style={{ color: "#bbb" }}>Aucun résultat.</Text>
-        </View>
-      ) : null}
-
-      <FlatList
-        data={data}
-        keyExtractor={(it) => it.playerSlug}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        renderItem={({ item }) => {
-          const club = item.activeClub?.name ?? "—";
-          const pos = item.position ?? "—";
-          const price = formatEur(item.minPriceEur);
-          const count = item.offerCount ?? 0;
-
-          return (
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
+          {filtered.map((r) => (
             <Pressable
-              onPress={() => router.push(`/player/${item.playerSlug}`)}
+              key={String(r.playerSlug ?? r.playerName ?? Math.random())}
+              onPress={() => r.playerSlug && router.push(`/player/${r.playerSlug}`)}
               style={{
                 padding: 12,
+                borderRadius: 14,
                 borderWidth: 1,
-                borderColor: "#2a2a2a",
-                borderRadius: 12,
-                backgroundColor: "#0f0f0f",
+                borderColor: "#222",
+                backgroundColor: "#0b0b0b",
                 marginBottom: 10,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
-                {item.playerName ?? item.playerSlug}
+              <Text style={{ color: "white", fontWeight: "900" }}>{r.playerName ?? r.playerSlug ?? "—"}</Text>
+              <Text style={{ color: "#999", marginTop: 4 }}>
+                {(r.teamName ?? "—")} • {(r.position ?? "—")}
               </Text>
-              <Text style={{ color: "#bbb", marginTop: 4 }}>
-                {club} • {pos} • {count} offres
-              </Text>
-              <Text style={{ color: "white", marginTop: 6, fontWeight: "700" }}>
-                Prix min: {price}
+              <Text style={{ color: "#777", marginTop: 6 }}>
+                min €: {r.minPriceEur ?? "—"} • offers: {r.offersCount ?? "—"}
               </Text>
             </Pressable>
-          );
-        }}
-        ListFooterComponent={
-          fetchedAt ? (
-            <Text style={{ color: "#666", textAlign: "center", paddingTop: 6 }}>
-              MAJ: {new Date(fetchedAt).toLocaleString("fr-FR")}
+          ))}
+
+          {filtered.length === 0 ? (
+            <Text style={{ color: "#777", textAlign: "center", marginTop: 18 }}>
+              Aucun résultat.
             </Text>
-          ) : null
-        }
-      />
+          ) : null}
+        </ScrollView>
+      )}
     </View>
   );
 }
