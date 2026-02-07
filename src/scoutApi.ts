@@ -1,4 +1,14 @@
 ﻿import { apiFetch } from "./api";
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export type ScoutOffer = {
   offerId: string;
@@ -9,17 +19,47 @@ export type ScoutOffer = {
   eur?: number | null;
   priceText?: string | null; // XS_ALLOW_UNKNOWN_PRICES_APP_V1
 };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export type PageInfo = {
   hasNextPage: boolean;
   endCursor?: string | null;
 };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export type ScoutOffersResponse = {
   items: ScoutOffer[];
   pageInfo?: PageInfo;
   note?: string;
 };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export async function fetchScoutCards(params: {
   first?: number;
@@ -41,17 +81,42 @@ export async function fetchScoutCards(params: {
   return apiFetch<ScoutOffersResponse>(`/scout/cards?${qs.toString()}`, { signal: params.signal });
 }
 // Watchlist Scout
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export type WatchItem = { slug: string; addedAt: string };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export async function getScoutWatchlist() {
   return apiFetch<{ items: WatchItem[] }>(`/scout/watchlist`);
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export async function addScoutWatchlist(slug: string) {
   return apiFetch<{ ok: boolean; items: WatchItem[] }>(`/scout/watchlist`, {
     method: "POST",
     body: JSON.stringify({ slug }),
   });
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export async function removeScoutWatchlist(slug: string) {
   return apiFetch<{ ok: boolean; items: WatchItem[] }>(`/scout/watchlist`, {
     method: "DELETE",
@@ -60,23 +125,53 @@ export async function removeScoutWatchlist(slug: string) {
 }
 
 // Alertes Scout
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export type AlertItem = { id: string; slug: string; maxEur: number; createdAt: string; isEnabled: boolean };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export async function getScoutAlerts() {
   return apiFetch<{ items: AlertItem[] }>(`/scout/alerts`);
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export async function addScoutAlert(slug: string, maxEur: number) {
   return apiFetch<{ ok: boolean; items: AlertItem[] }>(`/scout/alerts`, {
     method: "POST",
     body: JSON.stringify({ slug, maxEur }),
   });
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export async function toggleScoutAlert(id: string, isEnabled: boolean) {
   return apiFetch<{ ok: boolean; items: AlertItem[] }>(`/scout/alerts`, {
     method: "PATCH",
     body: JSON.stringify({ id, isEnabled }),
   });
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export async function deleteScoutAlert(id: string) {
   return apiFetch<{ ok: boolean; items: AlertItem[] }>(`/scout/alerts`, {
     method: "DELETE",
@@ -90,6 +185,11 @@ export async function deleteScoutAlert(id: string) {
 
 
 /* XS_SCOUT_RECRUTER_API_V1: helpers for /scout/recruter and /scout/player/:slug */
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
 export type RecruiterRow = {
   playerSlug: string;
   playerName?: string | null;
@@ -99,6 +199,16 @@ export type RecruiterRow = {
   offerCount?: number | null;
   leagues?: string[] | null;
 };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export type RecruiterPlayer = {
   playerSlug: string;
@@ -108,6 +218,16 @@ export type RecruiterPlayer = {
   offersByLeague?: Record<string, any[]> | null;
   offers?: any[] | null;
 };
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export async function scoutRecruter(params?: { first?: number; q?: string }) {
   const qs = new URLSearchParams();
@@ -119,6 +239,16 @@ export async function scoutRecruter(params?: { first?: number; q?: string }) {
   if (!r.ok) throw new Error(`scoutRecruter HTTP ${r.status}`);
   return (await r.json()) as { items: RecruiterRow[]; meta?: any };
 }
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
+
+
+/* XS_SCOUT_BASE_URL_V1 */
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BASE_URL ??
+  "http://127.0.0.1:3000";
 
 export async function scoutPlayer(slug: string, params?: { first?: number }) {
   const qs = new URLSearchParams();
@@ -129,4 +259,5 @@ export async function scoutPlayer(slug: string, params?: { first?: number }) {
   if (!r.ok) throw new Error(`scoutPlayer HTTP ${r.status}`);
   return (await r.json()) as RecruiterPlayer;
 }
+
 
