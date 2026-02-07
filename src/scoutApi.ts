@@ -88,3 +88,45 @@ export async function deleteScoutAlert(id: string) {
 
 
 
+
+/* XS_SCOUT_RECRUTER_API_V1: helpers for /scout/recruter and /scout/player/:slug */
+export type RecruiterRow = {
+  playerSlug: string;
+  playerName?: string | null;
+  position?: string | null;
+  activeClub?: { name?: string | null; slug?: string | null } | null;
+  minPriceEur?: number | null;
+  offerCount?: number | null;
+  leagues?: string[] | null;
+};
+
+export type RecruiterPlayer = {
+  playerSlug: string;
+  playerName?: string | null;
+  position?: string | null;
+  activeClub?: { name?: string | null; slug?: string | null } | null;
+  offersByLeague?: Record<string, any[]> | null;
+  offers?: any[] | null;
+};
+
+export async function scoutRecruter(params?: { first?: number; q?: string }) {
+  const qs = new URLSearchParams();
+  qs.set("first", String(params?.first ?? 40));
+  if (params?.q) qs.set("q", params.q);
+
+  const url = `${BASE_URL}/scout/recruter?${qs.toString()}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`scoutRecruter HTTP ${r.status}`);
+  return (await r.json()) as { items: RecruiterRow[]; meta?: any };
+}
+
+export async function scoutPlayer(slug: string, params?: { first?: number }) {
+  const qs = new URLSearchParams();
+  qs.set("first", String(params?.first ?? 50));
+
+  const url = `${BASE_URL}/scout/player/${encodeURIComponent(slug)}?${qs.toString()}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`scoutPlayer HTTP ${r.status}`);
+  return (await r.json()) as RecruiterPlayer;
+}
+
