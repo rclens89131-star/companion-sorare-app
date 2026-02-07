@@ -35,6 +35,11 @@ export default function RecruterTab() {
       String(r.playerName ?? "").toLowerCase().includes(s) ||
       String(r.playerSlug ?? "").toLowerCase().includes(s));
   }, [q, rows]);
+  /* XS_RECRUTER_SHAPE_ALIGN_V1: backend returns slug/team; accept both shapes safely */
+  const getRowSlug = (r: any) => String(r?.playerSlug ?? r?.slug ?? r?.playerName ?? "");
+  const getTeam = (r: any) => String(r?.team ?? r?.teamName ?? "");
+
+
 
   return (
     <View style={{ flex: 1, backgroundColor: "black" }}>
@@ -89,8 +94,8 @@ export default function RecruterTab() {
         <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
           {filtered.map((r) => (
             <Pressable
-              key={String(r.playerSlug ?? r.playerName ?? Math.random())}
-              onPress={() => r.playerSlug && router.push(`/player/${r.playerSlug}`)}
+              key={getRowSlug(r) || String(r.playerName ?? Math.random())}
+              onPress={() => { const s = getRowSlug(r); if (s) router.push(`/player/${s}`); }}
               style={{
                 padding: 12,
                 borderRadius: 14,
@@ -102,7 +107,7 @@ export default function RecruterTab() {
             >
               <Text style={{ color: "white", fontWeight: "900" }}>{r.playerName ?? r.playerSlug ?? "—"}</Text>
               <Text style={{ color: "#999", marginTop: 4 }}>
-                {(r.position ?? "—")}
+                {(getTeam(r) || "—")} • {(r.position ?? "—")}
               </Text>
               <Text style={{ color: "#777", marginTop: 6 }}>
                 min €: {r.minPriceEur ?? "—"} • offers: {r.offerCount ?? "—"}
@@ -120,4 +125,5 @@ export default function RecruterTab() {
     </View>
   );
 }
+
 
