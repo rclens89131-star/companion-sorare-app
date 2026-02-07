@@ -33,9 +33,7 @@ export default function RecruterTab() {
     if (!s) return rows;
     return rows.filter(r =>
       String(r.playerName ?? "").toLowerCase().includes(s) ||
-      String(r.playerSlug ?? "").toLowerCase().includes(s) ||
-      String(r.teamName ?? "").toLowerCase().includes(s)
-    );
+      String(r.playerSlug ?? "").toLowerCase().includes(s));
   }, [q, rows]);
 
   return (
@@ -104,10 +102,10 @@ export default function RecruterTab() {
             >
               <Text style={{ color: "white", fontWeight: "900" }}>{r.playerName ?? r.playerSlug ?? "—"}</Text>
               <Text style={{ color: "#999", marginTop: 4 }}>
-                {(r.teamName ?? "—")} • {(r.position ?? "—")}
+                {(r.position ?? "—")}
               </Text>
               <Text style={{ color: "#777", marginTop: 6 }}>
-                min €: {r.minPriceEur ?? "—"} • offers: {r.offersCount ?? "—"}
+                min €: {r.minPriceEur ?? "—"} • offers: {r.offerCount ?? "—"}
               </Text>
             </Pressable>
           ))}
@@ -122,3 +120,4 @@ export default function RecruterTab() {
     </View>
   );
 }
+
