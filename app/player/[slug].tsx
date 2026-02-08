@@ -1,67 +1,90 @@
-﻿import React, { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { scoutPlayer, type ScoutOffer } from "../../src/scoutApi";
 
-/* XS_PLAYER_SCREEN_V1: minimal player detail screen using /scout/player/:slug */
-export default function PlayerScreen() {
-  const params = useLocalSearchParams();
-  const slug = String(params.slug ?? "");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [data, setData] = useState<any>(null);
+// XS_RECRUTER_PLAYER_SCREEN_V1_BEGIN
+type PlayerRes = {
+  player?: { slug: string; displayName?: string | null; team?: string | null; position?: string | null; pictureUrl?: string | null } | null;
+  cards?: ScoutOffer[];
+  note?: string;
+};
+
+function priceText(card: any) {
+  return typeof card?.eur === "number" ? `€${card.eur.toFixed(2)}` : "—";
+}
+
+export default function PlayerRecruiterScreen() {
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<PlayerRes | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!slug) return;
-      setLoading(true);
-      setErr(null);
+    let alive = true;
+    (async () => {
       try {
-        const base =
-          process.env.EXPO_PUBLIC_BASE_URL ??
-          "http://127.0.0.1:3000";
-        const res = await fetch(`${base}/scout/player/${encodeURIComponent(slug)}?first=20`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!cancelled) setData(json);
+        setLoading(true);
+        setError(null);
+        const s = String(slug || "").trim();
+        if (!s) throw new Error("Slug manquant");
+        const res = (await scoutPlayer(s)) as any;
+        if (!alive) return;
+        setData(res);
       } catch (e: any) {
-        if (!cancelled) setErr(e?.message ?? String(e));
+        if (!alive) return;
+        setError(e?.message || "Erreur chargement joueur");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (alive) setLoading(false);
       }
-    };
-    run();
-    return () => { cancelled = true; };
+    })();
+    return () => { alive = false; };
   }, [slug]);
 
+  const cards = useMemo(() => (data?.cards || []), [data]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: "black" }}>
-      <View style={{ padding: 12, paddingTop: 16 }}>
-        <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>
-          Joueur
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0f1115" }}>
+      <View style={{ padding: 12 }}>
+        <Text style={{ color: "white", fontSize: 22, fontWeight: "800" }}>
+          {data?.player?.displayName || String(slug || "")}
         </Text>
-        <Text style={{ color: "#888", marginTop: 4 }}>
-          {slug || "—"}
+        <Text style={{ color: "#9ba1a6", marginTop: 4 }}>
+          {(data?.player?.team || "Club inconnu")} · {(data?.player?.position || "N/A")}
         </Text>
+        {data?.note ? <Text style={{ color: "#6e7681", marginTop: 6, fontSize: 12 }}>{data.note}</Text> : null}
       </View>
 
       {loading ? (
-        <View style={{ paddingTop: 24 }}>
-          <ActivityIndicator />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color="#58a6ff" />
         </View>
-      ) : err ? (
-        <View style={{ margin: 12, padding: 12, borderWidth: 1, borderColor: "#5a1", borderRadius: 12 }}>
-          <Text style={{ color: "white", fontWeight: "900" }}>Erreur</Text>
-          <Text style={{ color: "#ccc", marginTop: 6 }}>{err}</Text>
+      ) : error ? (
+        <View style={{ padding: 12 }}>
+          <Text style={{ color: "#ff7b72" }}>{error}</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 24 }}>
-          <Text style={{ color: "#bbb", fontWeight: "800" }}>Réponse brute</Text>
-          <Text style={{ color: "#777", marginTop: 8, fontFamily: "monospace" }}>
-            {data ? JSON.stringify(data, null, 2) : "—"}
-          </Text>
-        </ScrollView>
+        <FlatList
+          data={cards}
+          keyExtractor={(it, idx) => `${(it as any)?.offerId || (it as any)?.slug || "x"}-${idx}`}
+          contentContainerStyle={{ padding: 12, paddingBottom: 30 }}
+          ListEmptyComponent={<Text style={{ color: "#9ba1a6", textAlign: "center", marginTop: 20 }}>Aucune offre.</Text>}
+          renderItem={({ item }: any) => (
+            <View style={{ backgroundColor: "#161b22", borderRadius: 12, padding: 10, marginBottom: 10, flexDirection: "row" }}>
+              <Image
+                source={{ uri: item?.pictureUrl || "https://via.placeholder.com/100x140.png?text=Card" }}
+                style={{ width: 56, height: 78, borderRadius: 8, backgroundColor: "#0d1117", marginRight: 10 }}
+              />
+              <View style={{ flex: 1, justifyContent: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "700" }} numberOfLines={1}>{item?.slug || "Carte"}</Text>
+                <Text style={{ color: "#58a6ff", fontWeight: "800" }}>{priceText(item)}</Text>
+                <Text style={{ color: "#9ba1a6" }}>{String(item?.rarity || "rarity inconnue")}</Text>
+              </View>
+            </View>
+          )}
+        />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
+// XS_RECRUTER_PLAYER_SCREEN_V1_END
