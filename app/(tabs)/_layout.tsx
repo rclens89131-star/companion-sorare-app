@@ -61,13 +61,6 @@ export default function TabsLayout() {
           href: null,
         }}
       />
-            {/* XS_TABS_ADD_RECRUTER_V1 */}
-        <Tabs.Screen
-          name="explore"
-          options={{
-            title: "Recruter",
-          }}
-        />
 </Tabs>
   );
 }
