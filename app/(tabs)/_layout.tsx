@@ -41,7 +41,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="market"
         options={{
           title: "Recruter",
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
