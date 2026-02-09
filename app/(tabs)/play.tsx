@@ -60,6 +60,24 @@ export default function PlayScreen() {
   return "";
 }
 
+
+// XS_PLAY_CARDKEY_HELPERS_V1: stable key + pos normalization for slots
+function cardKey(item: any): string {
+  // priorité: slug -> cardSlug -> id
+  const k = item?.slug ?? item?.cardSlug ?? item?.id ?? item?.card?.slug ?? item?.card?.id;
+  return String(k ?? "");
+}
+function cardPosCode(item: any): string {
+  // normalise vers GK/DEF/MID/FWD si possible
+  const raw = String(item?.position ?? item?.playerPosition ?? item?.anyPosition ?? "").toUpperCase();
+  if (!raw) return "";
+  if (raw === "GK" || raw.includes("GOAL")) return "GK";
+  if (raw === "DEF" || raw.includes("DEF")) return "DEF";
+  if (raw === "MID" || raw.includes("MID")) return "MID";
+  if (raw === "FWD" || raw.includes("FORW") || raw.includes("ATT") || raw.includes("STRIK")) return "FWD";
+  return raw;
+}
+
 function tryAdd(cardSlug: string, cardPos: string) {
   // XS_PLAY_TRYADD_ATOMIC_V1: compute from latest state (avoid stale picked/slot)
   setPicked((prev) => {
@@ -254,7 +272,7 @@ function tryAdd(cardSlug: string, cardPos: string) {
           <CardListItem
             card={item}
             selected={pickedSlugs.includes(item.slug)}
-            onPress={() => tryAdd(item.slug, normalizePos(item.position))}
+            onPress={() => tryAdd(cardKey(item), cardPosCode(item))}
           />
         )}
         ListEmptyComponent={
