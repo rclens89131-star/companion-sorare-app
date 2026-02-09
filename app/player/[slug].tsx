@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { scoutPlayer2 } from "../../src/scoutApi";
+import { scoutPlayer } from "../../src/scoutApi"; // XS_PLAYER_USE_SCOUTPLAYER_V1
 
 // XS_PLAYER_ROUTE_V1: real route file for /player/[slug] (must default export a component)
 type PlayerRes = {
@@ -36,7 +36,7 @@ export default function PlayerSlugScreen() {
       try {
         setLoading(true);
         setError(null);
-        const res = await scoutPlayer2(playerSlug, { allowUnknownPrices: true, first: 50 });
+        const res = await scoutPlayer(playerSlug, { first: 50 }) // XS_PLAYER_USE_SCOUTPLAYER_V1;
         if (alive) setData(res as any);
       } catch (e: any) {
         if (alive) setError(e?.message ?? "Erreur chargement joueur");
@@ -95,3 +95,5 @@ export default function PlayerSlugScreen() {
     </SafeAreaView>
   );
 }
+
+
