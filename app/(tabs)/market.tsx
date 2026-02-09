@@ -126,7 +126,7 @@ export default function RecruiterTabScreen() {
             // XS_RECRUTER_SHAPE_COMPAT_V1_END
             return (
             <TouchableOpacity
-              onPress={() => router.push({ pathname: "/player/[slug]", params: { slug: xsSlug || item.slug } })}
+              onPress={() => { const s = String(xsSlug || (item as any)?.slug || "").trim(); if (!s) return; router.push("/player/" + encodeURIComponent(s)); }}
               style={{ marginHorizontal: 12, marginBottom: 10, backgroundColor: "#161b22", borderRadius: 12, padding: 10, flexDirection: "row", gap: 10 }}
             >
               <Image
