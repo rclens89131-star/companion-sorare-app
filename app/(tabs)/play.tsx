@@ -11,6 +11,16 @@ const slots: Slot[] = ["GK", "DEF", "MID", "FWD", "FLEX"];
 export default function PlayScreen() {
   const gallery = useAppStore((s) => s.gallery);
 
+  // XS_PLAY_GALLERY_BYKEY_V1
+  const galleryByKey = React.useMemo(() => {
+    const m = new Map<string, any>();
+    for (const it of (gallery ?? [])) {
+      const k = cardKey(it);
+      if (k) m.set(k, it);
+    }
+    return m;
+  }, [gallery]);
+
   // Slots state: slug par slot
   const [picked, setPicked] = useState<Record<Slot, string | null>>({
     GK: null, DEF: null, MID: null, FWD: null, FLEX: null,
@@ -77,6 +87,8 @@ function cardPosCode(item: any): string {
   if (raw === "FWD" || raw.includes("FORW") || raw.includes("ATT") || raw.includes("STRIK")) return "FWD";
   return raw;
 }
+
+// XS_PLAY_GALLERY_BYKEY_V1: map gallery items by stable key (slug/cardSlug/id)
 
 function tryAdd(cardSlug: string, cardPos: string) {
   // XS_PLAY_TRYADD_ATOMIC_V1: compute from latest state (avoid stale picked/slot)
@@ -284,6 +296,7 @@ function tryAdd(cardSlug: string, cardPos: string) {
     </SafeAreaView>
   );
 }
+
 
 
 
