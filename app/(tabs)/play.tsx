@@ -61,37 +61,41 @@ export default function PlayScreen() {
 }
 
 function tryAdd(cardSlug: string, cardPos: string) {
-    // retire si déjà présent
-    if (pickedSlugs.includes(cardSlug)) {
-      removeSlug(cardSlug);
-      return;
+  // XS_PLAY_TRYADD_ATOMIC_V1: compute from latest state (avoid stale picked/slot)
+  setPicked((prev) => {
+    const next = { ...prev } as Record<Slot, string | null>;
+    const currentPickedSlugs = slots.map((s) => next[s]).filter(Boolean) as string[];
+
+    // toggle off si déjà présent
+    if (currentPickedSlugs.includes(cardSlug)) {
+      for (const s of slots) if (next[s] === cardSlug) next[s] = null;
+      return next;
     }
 
-    // place dans activeSlot si compatible, sinon dans FLEX si libre, sinon refuse
     const want = activeSlot;
     const isCompatible = (slot: Slot) => slot === "FLEX" || slot === cardPos;
 
-    if (!picked[want] && isCompatible(want)) {
-      setPicked((p) => ({ ...p, [want]: cardSlug }));
-      return;
+    if (!next[want] && isCompatible(want)) {
+      next[want] = cardSlug;
+      return next;
     }
 
-    // si slot actif pas possible, tenter slot exact correspondant
     const exactSlot = (["GK","DEF","MID","FWD"] as Slot[]).find((s) => s === cardPos) as Slot | undefined;
-    if (exactSlot && !picked[exactSlot]) {
-      setPicked((p) => ({ ...p, [exactSlot]: cardSlug }));
-      return;
+    if (exactSlot && !next[exactSlot]) {
+      next[exactSlot] = cardSlug;
+      return next;
     }
 
-    // sinon flex si libre
-    if (!picked.FLEX) {
-      setPicked((p) => ({ ...p, FLEX: cardSlug }));
-      return;
+    if (!next.FLEX) {
+      next.FLEX = cardSlug;
+      return next;
     }
 
     setToast("Aucun slot disponible/compatible");
     setTimeout(() => setToast(null), 1500);
-  }
+    return next;
+  });
+}
 
     function slotToPos(slot: string | null | undefined) {
     const s = String(slot || "").toUpperCase();
