@@ -132,3 +132,18 @@ export async function scoutPlayer(slug: string, params?: { first?: number }) {
 
 
 
+
+
+/* XS_SCOUT_PLAYER2_API_V2_BEGIN */
+export async function scoutPlayer2(
+  slug: string,
+  params?: { first?: number; allowUnknownPrices?: boolean }
+) {
+  const qs = new URLSearchParams();
+  if (params?.first != null) qs.set("first", String(params.first));
+  if (params?.allowUnknownPrices) qs.set("allowUnknownPrices", "1");
+  const tail = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<any>(`/scout/player2/${encodeURIComponent(String(slug || ""))}${tail}`);
+}
+/* XS_SCOUT_PLAYER2_API_V2_END */
+
