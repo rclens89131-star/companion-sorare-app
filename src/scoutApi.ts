@@ -121,11 +121,12 @@ export async function scoutPlayer(slug: string, params?: { first?: number }) {
   const qs = new URLSearchParams();
   qs.set("first", String(params?.first ?? 50));
 
-  const url = `${BASE_URL}/scout/player/${encodeURIComponent(slug)}?${qs.toString()}`;
+  const url = `${BASE_URL}/scout/player2/${encodeURIComponent(slug)}?${qs.toString()}`;
   const r = await fetch(url);
   if (!r.ok) throw new Error(`scoutPlayer HTTP ${r.status}`);
   return (await r.json()) as RecruiterPlayer;
 }
+
 
 
 
