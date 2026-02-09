@@ -10,7 +10,12 @@ type PlayerRes = {
   note?: string;
 };
 
-function priceText(card: any) { return typeof card?.eur === "number" ? `€${card.eur.toFixed(2)}` : "Prix indisponible (public)"; }
+function priceText(card: any) {
+  // XS_PRICE_TEXT_PREF_V1: prefer backend-provided label
+  const s = String(card?.priceText || "").trim();
+  if (s) return s;
+  return (typeof card?.eur === "number" && Number.isFinite(card.eur)) ? `€${card.eur.toFixed(2)}` : "Prix indisponible (public)";
+}` : "Prix indisponible (public)"; }
 
 export default function PlayerRecruiterScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -124,5 +129,6 @@ export default function PlayerRecruiterScreen() {
   );
 }
 // XS_RECRUTER_PLAYER_SCREEN_V1_END
+
 
 
