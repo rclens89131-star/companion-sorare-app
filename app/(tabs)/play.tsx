@@ -34,7 +34,7 @@ export default function PlayScreen() {
   const pickedSlugs = useMemo(() => slots.map((s) => picked[s]).filter(Boolean) as string[], [picked]);
 
   const pickedCards = useMemo(() => {
-    const map = new Map(gallery.map((c) => [c.slug, c]));
+    const map = new Map((gallery ?? []).map((c: any) => [cardKey(c), c]));
     return pickedSlugs.map((slug) => map.get(slug)).filter(Boolean);
   }, [gallery, pickedSlugs]);
 
@@ -190,7 +190,7 @@ function tryAdd(cardSlug: string, cardPos: string) {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
             {slots.map((s) => {
               const slug = picked[s];
-              const card: any = slug ? gallery.find((c: any) => c.slug === slug) : null;
+              const card: any = slug ? galleryByKey.get(slug) : null;
               const active = activeSlot === s;
 
               return (
@@ -278,12 +278,12 @@ function tryAdd(cardSlug: string, cardPos: string) {
 
       <FlatList
         data={filteredGalleryState.items}
-        keyExtractor={(item: any) => item.id || item.slug}
+        keyExtractor={(item: any) => cardKey(item)}
         contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 120 }}
         renderItem={({ item }: any) => (
           <CardListItem
             card={item}
-            selected={pickedSlugs.includes(item.slug)}
+            selected={pickedSlugs.includes(cardKey(item))}
             onPress={() => tryAdd(cardKey(item), cardPosCode(item))}
           />
         )}
