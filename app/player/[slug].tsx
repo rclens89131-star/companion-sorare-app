@@ -1,109 +1,97 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { scoutPlayer, type ScoutOffer } from "../../src/scoutApi";
+import { scoutPlayer2 } from "../../src/scoutApi";
 
-// XS_PLAYER_ROUTE_DEFAULT_EXPORT_V1: required by expo-router
+// XS_PLAYER_ROUTE_V1: real route file for /player/[slug] (must default export a component)
 type PlayerRes = {
-  player?: { slug: string; displayName?: string | null; team?: string | null; position?: string | null; pictureUrl?: string | null } | null;
-  offers?: ScoutOffer[] | null;
-  cards?: ScoutOffer[] | null;
-  note?: string | null;
+  player?: { slug?: string; displayName?: string | null; position?: string | null; activeClub?: { name?: string | null } | null; pictureUrl?: string | null } | null;
+  offers?: any[];
+  meta?: any;
+  note?: string;
 };
 
-function priceText(card: any) {
-  // XS_PRICE_TEXT_SAFE_V1: avoid template literals
-  const s = String(card?.priceText || "").trim();
+function xsPriceLabel(o: any) {
+  const s = String(o?.priceText || "").trim();
   if (s) return s;
-  if (typeof card?.eur === "number" && Number.isFinite(card.eur)) return "€" + card.eur.toFixed(2);
+  if (typeof o?.eur === "number" && Number.isFinite(o.eur)) return "€" + o.eur.toFixed(2);
   return "—";
 }
 
-export default function PlayerRecruiterScreen() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
-  const [loading, setLoading] = useState(true);
+export default function PlayerSlugScreen() {
+  const { slug } = useLocalSearchParams<{ slug?: string }>();
+  const playerSlug = String(slug || "").trim().toLowerCase();
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PlayerRes | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!playerSlug) {
+        setError("Slug joueur manquant.");
+        return;
+      }
       try {
         setLoading(true);
         setError(null);
-
-        const s = String(slug || "").trim();
-        if (!s) throw new Error("Slug manquant");
-
-        const raw = (await scoutPlayer(s)) as any;
-        if (!alive) return;
-
-        const normalized: PlayerRes = {
-          player: raw?.player ?? null,
-          offers: raw?.offers ?? null,
-          cards: raw?.cards ?? null,
-          note: raw?.note ?? raw?.meta?.note ?? null,
-        };
-
-        setData(normalized);
+        const res = await scoutPlayer2(playerSlug, { allowUnknownPrices: true, first: 50 });
+        if (alive) setData(res as any);
       } catch (e: any) {
-        if (!alive) return;
-        setError(String(e?.message || e));
+        if (alive) setError(e?.message ?? "Erreur chargement joueur");
       } finally {
-        if (!alive) return;
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-    return () => {
-      alive = false;
-    };
-  }, [slug]);
+    return () => { alive = false; };
+  }, [playerSlug]);
 
-  const cards = useMemo(() => {
-    const arr = (data?.offers ?? data?.cards ?? []) as any[];
-    return Array.isArray(arr) ? arr : [];
-  }, [data]);
+  const offers = useMemo(() => (Array.isArray(data?.offers) ? data!.offers : []), [data]);
 
-  const title = String(data?.player?.displayName || data?.player?.slug || slug || "Joueur");
-  const sub = [data?.player?.position, data?.player?.team].filter(Boolean).join(" • ");
+  if (!playerSlug) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#050509", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "white" }}>Slug joueur manquant.</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0d1117" }}>
-      <View style={{ padding: 12, paddingBottom: 8 }}>
-        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }} numberOfLines={1}>{title}</Text>
-        {sub ? <Text style={{ color: "#9ba1a6", marginTop: 2 }}>{sub}</Text> : null}
-        {data?.note ? <Text style={{ color: "#6e7681", marginTop: 6, fontSize: 12 }}>{String(data.note)}</Text> : null}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#050509" }}>
+      <View style={{ padding: 14 }}>
+        <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
+          {data?.player?.displayName || playerSlug}
+        </Text>
+        <Text style={{ color: "#b9b9c6", marginTop: 6 }}>
+          {offers.length} offres • Prix inconnus possibles (mode public)
+        </Text>
+        {error ? <Text style={{ color: "#ff9a9a", marginTop: 8 }}>{error}</Text> : null}
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#58a6ff" />
-        </View>
-      ) : error ? (
-        <View style={{ padding: 12 }}>
-          <Text style={{ color: "#ff7b72" }}>{error}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={cards}
-          keyExtractor={(it: any, idx: number) => String(it?.offerId || it?.id || it?.slug || "x") + "-" + String(idx)}
-          contentContainerStyle={{ padding: 12, paddingBottom: 30 }}
-          ListEmptyComponent={<Text style={{ color: "#9ba1a6", textAlign: "center", marginTop: 20 }}>Aucune offre.</Text>}
-          renderItem={({ item }: any) => (
-            <View style={{ backgroundColor: "#161b22", borderRadius: 12, padding: 10, marginBottom: 10, flexDirection: "row" }}>
-              <Image
-                source={{ uri: item?.pictureUrl || "https://via.placeholder.com/100x140.png?text=Card" }}
-                style={{ width: 56, height: 78, borderRadius: 8, backgroundColor: "#0d1117", marginRight: 10 }}
-              />
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <Text style={{ color: "#fff", fontWeight: "700" }} numberOfLines={1}>{String(item?.slug || "Carte")}</Text>
-                <Text style={{ color: "#58a6ff", fontWeight: "800", marginTop: 2 }}>{priceText(item)}</Text>
-                <Text style={{ color: "#9ba1a6", marginTop: 2 }}>{String(item?.rarity || "rarity inconnue")}</Text>
-              </View>
+        <View style={{ paddingTop: 24 }}><ActivityIndicator /></View>
+      ) : null}
+
+      <FlatList
+        data={offers}
+        keyExtractor={(it, idx) => String(it?.offerId || it?.slug || idx)}
+        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 30 }}
+        renderItem={({ item }) => {
+          const hasKnown = !!String(item?.priceText || "").trim() || (typeof item?.eur === "number");
+          return (
+            <View style={{ backgroundColor: "#101018", borderRadius: 14, borderWidth: 1, borderColor: "#262636", padding: 12, marginBottom: 10 }}>
+              <Text style={{ color: "white", fontWeight: "900" }}>{String(item?.rarity || "—").toUpperCase()}</Text>
+              <Text style={{ color: "#d7d7e0", marginTop: 6 }}>{xsPriceLabel(item)}</Text>
+              {!hasKnown ? (
+                <View style={{ marginTop: 8, alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, backgroundColor: "rgba(173,216,230,0.18)", borderWidth: 1, borderColor: "rgba(173,216,230,0.36)" }}>
+                  <Text style={{ color: "#bcdff5", fontWeight: "800" }}>Prix inconnu</Text>
+                </View>
+              ) : null}
             </View>
-          )}
-        />
-      )}
+          );
+        }}
+      />
     </SafeAreaView>
   );
 }
