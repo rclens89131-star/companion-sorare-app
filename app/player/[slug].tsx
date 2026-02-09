@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { scoutPlayer, type ScoutOffer } from "../../src/scoutApi";
@@ -28,10 +28,48 @@ export default function PlayerRecruiterScreen() {
         setError(null);
         const s = String(slug || "").trim();
         if (!s) throw new Error("Slug manquant");
-        const res = (await scoutPlayer(s)) as any;
+        /* ===== XS_PLAYER2_SHAPE_FIX_V1 =====
+   Normalize backend response to PlayerRes:
+   - v2: { player, offers, meta }
+   - legacy: { player?, cards?, note? }
+==================================== */
+        const raw = (await scoutPlayer(s)) as any;
         if (!alive) return;
-        setData(res);
-      } catch (e: any) {
+
+        const v2Player = raw?.player || null;
+        const v2Offers = Array.isArray(raw?.offers) ? raw.offers : [];
+        const legacyPlayer = raw?.player || null;
+        const legacyCards = Array.isArray(raw?.cards) ? raw.cards : [];
+
+        const playerObj =
+          v2Player
+            ? {
+                slug: String(v2Player.playerSlug || v2Player.slug || s),
+                displayName: v2Player.playerName || v2Player.displayName || null,
+                team: v2Player.activeClub?.name || v2Player.team || null,
+                position: v2Player.position || null,
+                pictureUrl: v2Player.pictureUrl || null,
+              }
+            : (legacyPlayer
+                ? {
+                    slug: String(legacyPlayer.slug || s),
+                    displayName: legacyPlayer.displayName || null,
+                    team: legacyPlayer.team || null,
+                    position: legacyPlayer.position || null,
+                    pictureUrl: legacyPlayer.pictureUrl || null,
+                  }
+                : { slug: s, displayName: s, team: null, position: null, pictureUrl: null });
+
+        const cardsArr = (v2Offers.length ? v2Offers : legacyCards);
+
+        const noteTxt =
+          raw?.note ||
+          raw?.meta?.note ||
+          (v2Offers.length ? "v2" : "legacy") ||
+          undefined;
+
+        setData({ player: playerObj, cards: cardsArr, note: noteTxt });
+/* ===== END XS_PLAYER2_SHAPE_FIX_V1 ===== */} catch (e: any) {
         if (!alive) return;
         setError(e?.message || "Erreur chargement joueur");
       } finally {
