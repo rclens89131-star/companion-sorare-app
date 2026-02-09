@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, SafeAreaView, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { scoutPlayer } from "../../src/scoutApi"; // XS_PLAYER_USE_SCOUTPLAYER_V1
+import { scoutPlayer2 } from "../../src/scoutApi"; // XS_PLAYER_USE_SCOUTPLAYER2_V1
 
 // XS_PLAYER_ROUTE_V1: real route file for /player/[slug] (must default export a component)
 type PlayerRes = {
@@ -95,5 +95,6 @@ export default function PlayerSlugScreen() {
     </SafeAreaView>
   );
 }
+
 
 
