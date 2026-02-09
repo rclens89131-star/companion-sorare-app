@@ -10,9 +10,7 @@ type PlayerRes = {
   note?: string;
 };
 
-function priceText(card: any) {
-  return typeof card?.eur === "number" ? `€${card.eur.toFixed(2)}` : "—";
-}
+function priceText(card: any) { return typeof card?.eur === "number" ? `€${card.eur.toFixed(2)}` : "Prix indisponible (public)"; }
 
 export default function PlayerRecruiterScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -126,3 +124,4 @@ export default function PlayerRecruiterScreen() {
   );
 }
 // XS_RECRUTER_PLAYER_SCREEN_V1_END
+
