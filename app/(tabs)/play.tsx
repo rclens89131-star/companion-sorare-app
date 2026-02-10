@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, SafeAreaView, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, SafeAreaView, Text, TextInput, View, Image } from "react-native";
 import { theme } from "../../src/theme";
 import { useAppStore } from "../../src/store/useAppStore";
 import { CardListItem } from "../../src/components/CardListItem";
@@ -142,6 +142,44 @@ function cardPosCode(item: any): string {
   // sinon laisser brut (au cas où)
   return raw;
 }
+/* XS_PLAY_SLOT_MINICARD_V1: show selected card inside slots as a mini card */
+function SlotMiniCard({ card }: { card: any }) {
+  const url = String(card?.pictureUrl ?? card?.card?.pictureUrl ?? "").trim();
+  const name = String(card?.playerName ?? card?.card?.playerName ?? "Unknown");
+  const rarity = String(card?.rarity ?? card?.card?.rarity ?? "").toUpperCase();
+
+  return (
+    <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+      <View
+        style={{
+          width: 46,
+          height: 64, // mini ratio proche carte
+          borderRadius: 10,
+          overflow: "hidden",
+          backgroundColor: theme.panel2,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.12)",
+        }}
+      >
+        {url ? (
+          <Image source={{ uri: url }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: theme.muted, fontSize: 10, fontWeight: "800" }}>—</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.text, fontWeight: "900" }} numberOfLines={1}>{name}</Text>
+        <Text style={{ color: theme.muted, marginTop: 2, fontSize: 12 }} numberOfLines={1}>
+          {rarity || "—"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // XS_PLAY_GALLERY_BYKEY_V1: map gallery items by stable key (slug/cardSlug/id)
 
 function tryAdd(cardSlug: string, cardPos: string) {
@@ -262,41 +300,32 @@ if (!next[want] && isCompatible(want)) {
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
             {slots.map((s) => {
-              const slug = picked[s];
-              const card: any = slug ? galleryByKey.get(slug) : null;
-/* XS_PLAY_SLOT_PROBE_V1 */
-try {
-  console.log("[PLAY][slotRender]", {
-    slot: s,
-    pickedSlug: slug,
-    cardFound: !!card,
-    galleryByKeySize: (galleryByKey as any)?.size,
-    galleryLen: (gallery ?? []).length,
-  });
-} catch {}
-              const active = activeSlot === s;
+  const slug = picked[s];
+  const card: any = slug ? galleryByKey.get(slug) : null;
+  const isActive = activeSlot === s;
 
-              return (
-                <Pressable
-                  key={s}
-                  onPress={() => setActiveSlot(s)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    borderRadius: 14,
-                    backgroundColor: active ? "rgba(59,130,246,0.18)" : theme.panel2,
-                    borderWidth: 1,
-                    borderColor: active ? "rgba(59,130,246,0.35)" : theme.stroke,
-                    minWidth: 92,
-                  }}
-                >
-                  <Text style={{ color: theme.text, fontWeight: "900" }}>{s}</Text>
-                  <Text style={{ color: theme.muted, marginTop: 4 }} numberOfLines={1}>
-                    {card ? card.playerName : "Vide"}
-                  </Text>
-                </Pressable>
-              );
-            })}
+  return (
+    <Pressable
+      key={s}
+      onPress={() => setActiveSlot(s)}
+      style={{
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: isActive ? "rgba(59,130,246,0.55)" : theme.stroke,
+        backgroundColor: theme.panel,
+      }}
+    >
+      <Text style={{ color: theme.muted, fontWeight: "900", marginBottom: 8 }}>{s}</Text>
+
+      {card ? (
+        <SlotMiniCard card={card} />
+      ) : (
+        <Text style={{ color: theme.muted, fontWeight: "800" }}>Vide</Text>
+      )}
+    </Pressable>
+  );
+})}
           </View>
 
           {/* Validation */}
@@ -379,6 +408,7 @@ try {
     </SafeAreaView>
   );
 }
+
 
 
 
