@@ -72,10 +72,47 @@ export default function PlayScreen() {
 
 
 // XS_PLAY_CARDKEY_HELPERS_V1: stable key + pos normalization for slots
+/* XS_PLAY_CARDKEY_FALLBACK_V1: guarantee non-empty stable key (avoid "" -> slots show "Vide") */
+function xsHash32(input: string): string {
+  let h = 2166136261; // FNV-1a 32-bit
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  // unsigned + base36
+  return (h >>> 0).toString(36);
+}
+
+// XS_PLAY_CARDKEY_HELPERS_V1: stable key + pos normalization for slots
 function cardKey(item: any): string {
-  // priorité: slug -> cardSlug -> id
-  const k = item?.slug ?? item?.cardSlug ?? item?.id ?? item?.card?.slug ?? item?.card?.id;
-  return String(k ?? "");
+  // priorité: slug -> cardSlug -> id (+ variantes)
+  const k =
+    item?.slug ??
+    item?.cardSlug ??
+    item?.id ??
+    item?.card?.slug ??
+    item?.card?.cardSlug ??
+    item?.card?.id ??
+    item?.token?.id ??
+    item?.tokenId ??
+    item?.assetId ??
+    item?.publicId ??
+    item?.card?.publicId;
+
+  const key = String(k ?? "").trim();
+  if (key) return key;
+
+  // fallback déterministe (évite "" et garde une stabilité raisonnable)
+  const fp = [
+    String(item?.pictureUrl ?? item?.card?.pictureUrl ?? ""),
+    String(item?.playerName ?? item?.card?.playerName ?? ""),
+    String(item?.seasonYear ?? item?.card?.seasonYear ?? ""),
+    String(item?.rarity ?? item?.card?.rarity ?? ""),
+    String(item?.teamName ?? item?.card?.teamName ?? ""),
+    String(item?.position ?? item?.card?.position ?? ""),
+  ].join("|");
+
+  return "fb_" + xsHash32(fp);
 }
 function cardPosCode(item: any): string {
   // normalise vers GK/DEF/MID/FWD si possible
@@ -296,6 +333,7 @@ function tryAdd(cardSlug: string, cardPos: string) {
     </SafeAreaView>
   );
 }
+
 
 
 
