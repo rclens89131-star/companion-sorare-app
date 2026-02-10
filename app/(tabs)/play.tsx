@@ -114,22 +114,51 @@ function cardKey(item: any): string {
 
   return "fb_" + xsHash32(fp);
 }
+/* XS_PLAY_CARDPOS_FALLBACK_V1: cardPosCode must not be "" (otherwise GK/DEF/MID/FWD never match and it falls to FLEX) */
 function cardPosCode(item: any): string {
-  // normalise vers GK/DEF/MID/FWD si possible
-  const raw = String(item?.position ?? item?.playerPosition ?? item?.anyPosition ?? "").toUpperCase();
+  // Essayez plusieurs shapes (selon source: /cards, snapshots, etc.)
+  const rawPos =
+    item?.position ??
+    item?.playerPosition ??
+    item?.anyPosition ??
+    item?.card?.position ??
+    item?.card?.playerPosition ??
+    item?.card?.anyPosition ??
+    (Array.isArray(item?.anyPositions) ? item?.anyPositions?.[0] : null) ??
+    (Array.isArray(item?.card?.anyPositions) ? item?.card?.anyPositions?.[0] : null) ??
+    item?.player?.position ??
+    item?.card?.player?.position ??
+    "";
+
+  const raw = String(rawPos ?? "").toUpperCase().trim();
   if (!raw) return "";
+
+  // normalise vers GK/DEF/MID/FWD si possible
   if (raw === "GK" || raw.includes("GOAL")) return "GK";
   if (raw === "DEF" || raw.includes("DEF")) return "DEF";
   if (raw === "MID" || raw.includes("MID")) return "MID";
   if (raw === "FWD" || raw.includes("FORW") || raw.includes("ATT") || raw.includes("STRIK")) return "FWD";
+
+  // sinon laisser brut (au cas où)
   return raw;
 }
-
 // XS_PLAY_GALLERY_BYKEY_V1: map gallery items by stable key (slug/cardSlug/id)
 
 function tryAdd(cardSlug: string, cardPos: string) {
   // XS_PLAY_TRYADD_ATOMIC_V1: compute from latest state (avoid stale picked/slot)
   setPicked((prev) => {
+    /* XS_PLAY_SLOT_PROBE_V1 */
+    try {
+      console.log("[PLAY][tryAdd] tap", {
+        cardSlug,
+        cardPos,
+        activeSlot,
+        prevPicked: prev,
+        galleryLen: (gallery ?? []).length,
+        hasInMap: !!galleryByKey.get(cardSlug),
+        keyLooksEmpty: !String(cardSlug || "").trim(),
+      });
+    } catch {}
     const next = { ...prev } as Record<Slot, string | null>;
     const currentPickedSlugs = slots.map((s) => next[s]).filter(Boolean) as string[];
 
@@ -228,6 +257,16 @@ function tryAdd(cardSlug: string, cardPos: string) {
             {slots.map((s) => {
               const slug = picked[s];
               const card: any = slug ? galleryByKey.get(slug) : null;
+/* XS_PLAY_SLOT_PROBE_V1 */
+try {
+  console.log("[PLAY][slotRender]", {
+    slot: s,
+    pickedSlug: slug,
+    cardFound: !!card,
+    galleryByKeySize: (galleryByKey as any)?.size,
+    galleryLen: (gallery ?? []).length,
+  });
+} catch {}
               const active = activeSlot === s;
 
               return (
@@ -333,6 +372,8 @@ function tryAdd(cardSlug: string, cardPos: string) {
     </SafeAreaView>
   );
 }
+
+
 
 
 
