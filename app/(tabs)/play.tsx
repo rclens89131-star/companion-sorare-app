@@ -169,9 +169,16 @@ function tryAdd(cardSlug: string, cardPos: string) {
     }
 
     const want = activeSlot;
-    const isCompatible = (slot: Slot) => slot === "FLEX" || slot === cardPos;
+const isCompatible = (slot: Slot) => slot === "FLEX" || slot === cardPos;
 
-    if (!next[want] && isCompatible(want)) {
+/* XS_PLAY_TRYADD_ALLOW_UNKNOWN_POS_V1:
+   Si l'utilisateur a sélectionné un slot précis (GK/DEF/MID/FWD) et qu'il est vide,
+   on autorise l'ajout même si cardPos est inconnu (""), sinon ça tombe en FLEX. */
+if (want !== "FLEX" && !next[want] && (!cardPos || isCompatible(want))) {
+  next[want] = cardSlug;
+  return next;
+}
+if (!next[want] && isCompatible(want)) {
       next[want] = cardSlug;
       return next;
     }
@@ -372,6 +379,7 @@ try {
     </SafeAreaView>
   );
 }
+
 
 
 
