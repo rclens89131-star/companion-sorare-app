@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "guard:start:lan": "node ./scripts/ensure-project-root.js && expo start --lan",
+    "guard:export:web": "node ./scripts/ensure-project-root.js && expo export --platform web",
+    "guard:tsc": "node ./scripts/ensure-project-root.js && tsc --noEmit"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
