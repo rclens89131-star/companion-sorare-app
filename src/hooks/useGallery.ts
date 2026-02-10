@@ -179,7 +179,14 @@ export function useGallery({ identifier, first = 25 }: Options) {
   );
 
   const reload = useCallback(() => fetchPage("reset"), [fetchPage]);
-  const loadMore = useCallback(() => fetchPage("more"), [fetchPage]);
+  /* XS_FIX_GALLERY_LOADMORE_GUARD_V1
+     - Stop net si pas de page suivante OU cursor null
+  */
+  const loadMore = useCallback(() => {
+    if (!hasNextRef.current || !cursorRef.current) return;
+    fetchPage("more");
+  }, [fetchPage]);
+  /* XS_FIX_GALLERY_LOADMORE_GUARD_V1_END */
 
   useEffect(() => {
     reload();
