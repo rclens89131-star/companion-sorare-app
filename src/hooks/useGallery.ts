@@ -161,8 +161,10 @@ export function useGallery({ identifier, first = 25 }: Options) {
         setCards((prev) => (mode === "reset" ? uniqMerge([], filtered) : uniqMerge(prev, filtered)));
 
         const pi = r?.pageInfo || {};
-        hasNextRef.current = !!pi.hasNextPage;
+        // XS_FIX_GALLERY_PAGINATION_STOP_ON_NULL_CURSOR_V1 (BEGIN)
         cursorRef.current = pi.endCursor ?? null;
+        hasNextRef.current = !!pi.hasNextPage && !!cursorRef.current;
+        // XS_FIX_GALLERY_PAGINATION_STOP_ON_NULL_CURSOR_V1 (END)
       } catch (e: any) {
         setError(e?.message ?? "Erreur chargement");
         if (mode === "reset") setCards([]);
@@ -185,6 +187,7 @@ export function useGallery({ identifier, first = 25 }: Options) {
 
   return { cards, loading, loadingMore, error, reload, loadMore };
 }
+
 
 
 
