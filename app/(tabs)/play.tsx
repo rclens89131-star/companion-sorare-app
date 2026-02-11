@@ -265,7 +265,23 @@ if (!next[want] && isCompatible(want)) {
   }
 
   return { items: filtered, isFallback };
-}, [gallery, activeSlot]);
+}, [gallery, activeSlot]);  
+  function formatSlotMeta(card: any) {
+    const playerName = String(card?.playerName || card?.name || card?.player?.displayName || card?.player?.name || "").trim();
+    const club = String(card?.club || card?.team || card?.teamName || card?.player?.activeClub?.name || "").trim();
+    const position = String(card?.position || card?.player?.position || "").toUpperCase();
+    const rarity = String(card?.rarity || card?.scarcity || "").trim();
+    const priceRaw = card?.price ?? card?.lastSalePrice ?? card?.floorPrice;
+    const formattedPrice =
+      typeof priceRaw === "number"
+        ? `Ξ ${priceRaw.toFixed(4)}`
+        : String(priceRaw || "").trim();
+
+    const line1 = [club, position].filter(Boolean).join(" • ");
+    const line2 = [rarity, formattedPrice].filter(Boolean).join(" • ");
+    return { playerName, line1, line2 };
+  }
+
 
   async function save() {
     if (!validation.ok) {
@@ -408,6 +424,7 @@ if (!next[want] && isCompatible(want)) {
     </SafeAreaView>
   );
 }
+
 
 
 
