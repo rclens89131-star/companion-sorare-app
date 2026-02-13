@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { theme } from "../../src/theme";
 
-const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://127.0.0.1:3000";
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? "http://192.168.1.19:3000" /* XS_FIX_BASE_URL_FALLBACK_LAN_V1 */;
 
 export default function SettingsScreen() {
   async function onLogout() {
@@ -74,3 +74,4 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+

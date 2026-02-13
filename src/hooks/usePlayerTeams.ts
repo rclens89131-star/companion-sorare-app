@@ -2,8 +2,14 @@
 import { apiFetch } from "../api";
 
 type TeamInfo = { teamName: string | null; teamSlug: string | null };
+type PlayerTeamData = {
+  teamName?: string | null;
+  teamSlug?: string | null;
+};
+
 
 export function usePlayerTeams() {
+  let d: any = null; // XS_D_SCOPE_V1
   // cache { playerSlug -> TeamInfo }
   const cacheRef = useRef<Record<string, TeamInfo>>({});
   const inFlightRef = useRef<Record<string, Promise<TeamInfo> | null>>({});
@@ -20,15 +26,19 @@ export function usePlayerTeams() {
 
     const p = (async () => {
       try {
-        const data = await apiFetch(`/public-player?slug=${encodeURIComponent(playerSlug)}`);
-        const info: TeamInfo = {
-          teamName: (data as any)?.teamName ?? null,
-          teamSlug: (data as any)?.teamSlug ?? null,
-        };
+        const data = await apiFetch(`/public-player?slug=${encodeURIComponent(playerSlug)}`);
+        d = data as any;
+const info: TeamInfo = {
+  teamName: d?.teamName ?? null,
+  teamSlug: d?.teamSlug ?? null,
+};
         cacheRef.current[playerSlug] = info;
         return info;
       } catch {
-        const info: TeamInfo = { teamName: null, teamSlug: null };
+const info: TeamInfo = {
+  teamName: d?.teamName ?? null,
+  teamSlug: d?.teamSlug ?? null,
+};
         cacheRef.current[playerSlug] = info;
         return info;
       } finally {
@@ -47,5 +57,15 @@ export function usePlayerTeams() {
 
   return { getTeam, peek };
 }
+
+
+
+
+
+
+
+
+
+
 
 

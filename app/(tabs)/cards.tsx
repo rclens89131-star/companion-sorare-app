@@ -80,7 +80,7 @@ export default function CardsScreen() {
           <Text style={{ color: theme.bad, fontWeight: "800" }}>Erreur: {error}</Text>
         ) : (
           <Text style={{ color: theme.muted }}>
-            {cards.length} cartes (hors commons) • sélection Jouer: {selected.length}/5
+            {cards.length} cartes • sélection Jouer: {selected.length}/5
           </Text>
         )}
       </View>
@@ -138,4 +138,5 @@ export default function CardsScreen() {
     </SafeAreaView>
   );
 }
+
 
